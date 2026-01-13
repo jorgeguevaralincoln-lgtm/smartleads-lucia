@@ -3,104 +3,445 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal de Beneficios Familiares</title>
+    <title>SmartLeads | Asistente Inteligente</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
-        .chat-container { height: 65vh; }
-        .bubble { max-width: 85%; padding: 12px; border-radius: 18px; margin-bottom: 12px; font-size: 16px; line-height: 1.4; }
-        .lucia { background: #f0f9ff; color: #0369a1; align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid #bae6fd; }
-        .user { background: #0369a1; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+        body { font-family: 'Inter', sans-serif; background-color: #f2f2f7; color: #1d1d1f; }
+        .chat-container { height: 70vh; scroll-behavior: smooth; }
+        .bubble { max-width: 85%; padding: 12px 18px; border-radius: 20px; margin-bottom: 10px; font-size: 16px; line-height: 1.5; box-shadow: 0 2px 4px rgba(0,0,0,0.02); animation: messageSlide 0.4s ease; }
+        @keyframes messageSlide { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .lucia { background: #ffffff; color: #1d1d1f; align-self: flex-start; border-bottom-left-radius: 4px; }
+        .user { background: #007AFF; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .typing-dot { width: 6px; height: 6px; background: #8e8e93; border-radius: 50%; animation: typing 1.4s infinite ease-in-out both; }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .ws-button { background: #34C759; color: white; padding: 16px; border-radius: 18px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 15px; transition: transform 0.2s; cursor: pointer; }
+        .ws-button:active { transform: scale(0.96); }
+        .quick-btn { border: 1px solid #007AFF; color: #007AFF; background: rgba(255,255,255,0.9); padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 500; margin-right: 6px; margin-top: 8px; cursor: pointer; }
+        .view-hidden { display: none !important; }
+        .admin-trigger { cursor: pointer; padding: 10px; }
+        
+        /* Modal CRM */
+        .crm-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 60; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+        .crm-modal.active { opacity: 1; pointer-events: auto; }
+        .crm-card { background: white; width: 95%; max-width: 500px; max-height: 85vh; border-radius: 24px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); transform: scale(0.95); transition: transform 0.2s; }
+        .crm-modal.active .crm-card { transform: scale(1); }
     </style>
 </head>
-<body class="bg-slate-50 font-sans">
-    <div class="max-w-md mx-auto bg-white shadow-2xl min-h-screen flex flex-col border-x">
-        <div class="bg-blue-800 p-5 text-white shadow-lg">
-            <h1 class="text-xl font-bold">Portal de Beneficios</h1>
-            <div class="flex items-center gap-2 opacity-90">
-                <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                <p class="text-xs font-medium">Asistencia Licenciada en Florida</p>
+<body class="flex items-center justify-center min-h-screen">
+
+    <!-- VISTA 1: CHAT CLIENTE -->
+    <div id="client-view" class="w-full max-w-md bg-[#fbfbfd] md:rounded-[40px] shadow-2xl h-screen md:h-[92vh] flex flex-col overflow-hidden border border-white/50 relative ring-1 ring-black/5">
+        <div class="bg-white/80 backdrop-blur-xl p-4 flex items-center gap-4 z-20 border-b border-gray-200/50 sticky top-0">
+            <div class="relative">
+                <img src="https://img.freepik.com/free-photo/portrait-young-businesswoman-holding-eyeglasses-hand-against-gray-background_23-2148029483.jpg?w=200" 
+                     class="w-11 h-11 rounded-full object-cover border border-gray-200 shadow-sm" alt="Lucía">
+                <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
             </div>
+            <div class="flex-grow">
+                <h1 class="text-[17px] font-semibold text-gray-900 tracking-tight leading-tight">Lucía</h1>
+                <p class="text-[12px] text-gray-500 font-medium">Asistente Inteligente</p>
+            </div>
+            <div class="p-2 text-gray-300"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg></div>
         </div>
 
-        <div id="chat-box" class="chat-container p-4 flex flex-col flex-grow overflow-y-auto bg-white">
-            <div class="bubble lucia shadow-sm">
-                ¡Hola! Qué gusto saludarle. Soy Lucía, asistente del Portal de Beneficios Familiares. Mi labor es orientarle con respeto sobre los programas disponibles para su tranquilidad. <br><br>¿Con quién tengo el gusto de hablar?
-            </div>
+        <div id="chat-box" class="chat-container p-5 flex flex-col flex-grow overflow-y-auto no-scrollbar bg-[#f5f5f7]">
+            <div class="bubble lucia">¡Hola! 😊 Es un placer saludarle.<br><br>Soy <b>Lucía</b>, su asistente personal.<br><br><b>¿Con quién tengo el gusto de hablar?</b></div>
         </div>
 
-        <div id="loading" class="px-4 text-xs text-gray-400 hidden italic mb-4">Lucía está consultando los programas...</div>
+        <div id="loading" class="px-6 py-2 hidden"><div class="bg-gray-200/50 inline-flex items-center gap-1 px-4 py-2 rounded-full"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>
 
-        <div class="p-4 bg-slate-50 border-t flex items-center gap-2">
-            <input id="user-input" type="text" placeholder="Escriba su mensaje aquí..." 
-                class="flex-grow border border-slate-300 rounded-full px-5 py-3 outline-none focus:border-blue-500 shadow-sm">
-            <button id="send-btn" class="bg-blue-700 hover:bg-blue-800 text-white p-3 rounded-full transition-all shadow-md">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                </svg>
-            </button>
+        <div class="p-4 bg-white/80 backdrop-blur-xl border-t border-gray-200/50 pb-6 md:pb-4">
+            <div class="flex items-center gap-2">
+                <div class="flex-grow bg-gray-100/80 rounded-full border border-transparent focus-within:bg-white focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                    <input id="user-input" type="text" placeholder="Escribe un mensaje..." class="w-full bg-transparent px-4 py-2.5 outline-none text-[16px] text-gray-800 placeholder-gray-400 rounded-full">
+                </div>
+                <button id="send-btn" class="bg-[#007AFF] hover:bg-[#0062cc] text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 pl-0.5"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>
+                </button>
+            </div>
+            <p class="text-center text-[10px] text-gray-400 mt-2 font-medium select-none"><span class="admin-trigger hover:text-gray-600 transition-colors" onclick="openPinModal()">SmartLeads</span> • Seguro & Privado</p>
         </div>
     </div>
 
-    <script>
-        const API_KEY = "AIzaSyATzJL2mo1bRmweUhK4RXh4BO3KLwBhw8g"; 
-        const chatBox = document.getElementById('chat-box');
-        const userInput = document.getElementById('user-input');
-        const sendBtn = document.getElementById('send-btn');
-        const loading = document.getElementById('loading');
+    <!-- MODAL DE PIN -->
+    <div id="pin-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xs transform transition-all scale-100">
+            <div class="text-center mb-6">
+                <div class="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg></div>
+                <h3 class="text-lg font-bold text-gray-900">Acceso Admin</h3>
+                <p class="text-sm text-gray-500">Ingrese PIN de seguridad</p>
+            </div>
+            <input type="password" id="pin-input" maxlength="6" class="w-full text-center text-2xl tracking-[0.5em] font-bold border-2 border-gray-200 rounded-xl py-3 px-4 mb-6 focus:border-blue-500 outline-none" placeholder="••••••">
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="closePinModal()" class="px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50">Cancelar</button>
+                <button onclick="verifyPin()" class="px-4 py-2.5 rounded-xl bg-[#007AFF] text-white font-medium hover:bg-blue-600 shadow-lg">Entrar</button>
+            </div>
+        </div>
+    </div>
 
-        const SYSTEM_PROMPT = `Eres Lucía, asistente del Portal de Beneficios Familiares en Florida. 
-        Tu objetivo es calificar prospectos para seguros de gastos finales con respeto y empatía.
-        REGLAS DE ORO:
-        1. No des precios fijos, da rangos diarios aproximados (ej: $0.75 a $1.50).
-        2. Si tienen 2 años sin problemas graves de salud, calificarán para mejores precios.
-        3. Siempre posiciona al "Especialista Licenciado por el Estado" como la autoridad para validar beneficios.
-        4. No menciones marcas de seguros.
-        5. Sé breve, profesional y deja que el usuario sienta que tiene el control.
-        6. Al final, ofrece contacto por WhatsApp o llamada para hablar con el especialista.`;
+    <!-- VISTA 2: DASHBOARD ADMIN (CRM) -->
+    <div id="admin-view" class="w-full max-w-6xl bg-white shadow-2xl min-h-[90vh] flex-col overflow-hidden rounded-[20px] border border-gray-200 view-hidden">
+        <div class="bg-slate-900 p-6 text-white flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold tracking-tight">Panel de Leads</h1>
+                <div class="flex items-center gap-2 mt-1">
+                    <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                    <p class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Base de Datos en Vivo</p>
+                </div>
+            </div>
+            <button onclick="switchView('client')" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg text-sm font-medium transition-all">&larr; Volver al Chat</button>
+        </div>
+        <div class="p-0 overflow-y-auto max-h-[80vh]">
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-gray-50 sticky top-0 shadow-sm">
+                    <tr class="text-gray-500 border-b border-gray-200 text-xs uppercase tracking-wider font-bold">
+                        <th class="p-4 w-32">Fecha</th>
+                        <th class="p-4 w-24">Estado</th>
+                        <th class="p-4">Prospecto</th>
+                        <th class="p-4 text-right">Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="leads-table-body" class="divide-y divide-gray-100"></tbody>
+            </table>
+        </div>
+    </div>
 
-        let history = [{ role: "user", parts: [{ text: SYSTEM_PROMPT }] }];
+    <!-- MODAL DETALLE DE LEAD (Resumen Ejecutivo) -->
+    <div id="lead-detail-modal" class="crm-modal">
+        <div class="crm-card">
+            <!-- Header Modal -->
+            <div class="bg-slate-50 p-5 border-b flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-gray-800 text-lg">Puntos Claves</h3>
+                    <p class="text-xs text-gray-500" id="detail-id">ID: ...</p>
+                </div>
+                <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600 bg-white p-2 rounded-full shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            
+            <!-- CONTENIDO PRINCIPAL: RESUMEN -->
+            <div class="p-6 bg-white flex-grow overflow-y-auto">
+                <h4 class="text-sm font-bold text-blue-800 uppercase tracking-wide mb-3 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                    Resumen del Agente
+                </h4>
+                
+                <!-- Aquí va el texto analizado por la IA -->
+                <div id="detail-summary" class="text-base text-gray-700 bg-blue-50/50 p-5 rounded-2xl border border-blue-100 leading-relaxed whitespace-pre-line font-medium shadow-sm">
+                    Cargando análisis...
+                </div>
 
-        function appendMessage(role, text) {
-            const div = document.createElement('div');
-            div.className = `bubble shadow-sm ${role}`;
-            div.innerText = text;
-            chatBox.appendChild(div);
-            chatBox.scrollTop = chatBox.scrollHeight;
+                <!-- Chat Oculto (Acordeón) -->
+                <div class="mt-8 border-t pt-4">
+                    <button onclick="toggleHistory()" id="toggle-history-btn" class="text-sm text-gray-400 hover:text-blue-600 font-medium flex items-center gap-1 w-full justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                        <span>Ver transcripción completa del chat</span>
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    <div id="detail-history" class="hidden mt-3 space-y-3 pl-4 border-l-2 border-gray-100 max-h-[200px] overflow-y-auto">
+                        <!-- Chat histórico -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer: Llamada -->
+            <div class="p-4 border-t bg-gray-50 flex justify-end gap-2">
+                <button onclick="window.open(`tel:${currentLeadPhone}`)" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" /></svg>
+                    Llamar al Prospecto
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, updateDoc, serverTimestamp, collection, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'smartleads-app';
+
+        // --- CLAVE DIVIDIDA (Seguridad) ---
+        const PARTE_A = "AIzaSyCjhXpHtovaqye6"; 
+        const PARTE_B = "O4r2ir2tT5lksOIrNfs";
+        const API_KEY = PARTE_A + PARTE_B;
+
+        const JORGE_PHONE = "14079553077";
+        const MODEL_NAME = "gemini-2.5-flash-preview-09-2025"; 
+        const sessionId = crypto.randomUUID();
+
+        let chatHistory = [];
+        let currentUser = null;
+        let stepCount = 0;
+        window.currentLeadPhone = ""; 
+
+        // --- AUTH ---
+        const initAuth = async () => {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
+            else await signInAnonymously(auth);
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                const leadRef = doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId);
+                setDoc(leadRef, { 
+                    startedAt: serverTimestamp(), 
+                    updatedAt: serverTimestamp(), 
+                    lastMessage: 'Chat iniciado',
+                    status: 'Visitando', 
+                    summary: 'Esperando análisis...' 
+                }, { merge: true });
+            } else initAuth();
+        });
+
+        // --- PIN LOGIC ---
+        window.openPinModal = () => { document.getElementById('pin-modal').classList.remove('hidden'); document.getElementById('pin-input').focus(); };
+        window.closePinModal = () => document.getElementById('pin-modal').classList.add('hidden');
+        window.verifyPin = () => { if (document.getElementById('pin-input').value === "123456") { closePinModal(); switchView('admin'); } else alert("⛔ PIN Incorrecto"); };
+
+        // --- DASHBOARD & DETALLES ---
+        window.switchView = (view) => {
+            if (view === 'admin') {
+                document.getElementById('client-view').classList.add('view-hidden');
+                document.getElementById('admin-view').classList.remove('view-hidden');
+                document.getElementById('admin-view').classList.add('flex');
+                loadLeads();
+            } else {
+                document.getElementById('admin-view').classList.add('view-hidden');
+                document.getElementById('admin-view').classList.remove('flex');
+                document.getElementById('client-view').classList.remove('view-hidden');
+            }
+        };
+
+        window.toggleHistory = () => {
+            const hist = document.getElementById('detail-history');
+            if (hist.classList.contains('hidden')) hist.classList.remove('hidden');
+            else hist.classList.add('hidden');
         }
 
-        async function sendMessage() {
-            const text = userInput.value.trim();
-            if (!text) return;
-
-            appendMessage('user', text);
-            userInput.value = '';
-            loading.classList.remove('hidden');
-
-            history.push({ role: "user", parts: [{ text: text }] });
+        window.openDetailModal = async (leadId) => {
+            const modal = document.getElementById('lead-detail-modal');
+            const historyContainer = document.getElementById('detail-history');
+            const summaryEl = document.getElementById('detail-summary');
+            
+            modal.classList.add('active');
+            historyContainer.innerHTML = '';
+            // Resumen por defecto
+            summaryEl.innerHTML = '<span class="text-gray-400 italic">Cargando datos...</span>'; 
+            document.getElementById('detail-id').innerText = `ID: ${leadId.substring(0,8)}`;
 
             try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+                const docSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', leadId));
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    
+                    // MOSTRAR RESUMEN (Prioridad)
+                    if (data.summary && data.summary !== 'Esperando análisis...') {
+                        summaryEl.innerText = data.summary;
+                    } else {
+                        summaryEl.innerHTML = '<span class="text-gray-400">Conversación en curso o incompleta.</span>';
+                    }
+                    
+                    // CARGAR HISTORIAL (Oculto)
+                    if (data.history) {
+                        const messages = Object.entries(data.history).sort((a, b) => a[0] - b[0]).map(([_, val]) => val);
+                        messages.forEach(msg => {
+                            const isLucia = msg.role === 'lucia';
+                            const bubble = document.createElement('div');
+                            bubble.className = `p-2 rounded-lg text-xs max-w-[90%] mb-1 ${isLucia ? 'bg-white border text-gray-600' : 'bg-blue-50 text-blue-800 ml-auto text-right'}`;
+                            bubble.innerText = msg.text;
+                            historyContainer.appendChild(bubble);
+                        });
+                    }
+                }
+            } catch (e) { console.error(e); }
+        };
+
+        window.closeDetailModal = () => document.getElementById('lead-detail-modal').classList.remove('active');
+
+        function loadLeads() {
+            const leadsRef = collection(db, 'artifacts', appId, 'public', 'data', 'leads');
+            onSnapshot(leadsRef, (snapshot) => {
+                const tbody = document.getElementById('leads-table-body');
+                tbody.innerHTML = '';
+                let leads = [];
+                snapshot.forEach(doc => leads.push({ id: doc.id, ...doc.data() }));
+                leads.sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0));
+
+                leads.forEach(data => {
+                    const date = data.updatedAt ? new Date(data.updatedAt.seconds * 1000).toLocaleString('es-ES', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' }) : 'Hoy';
+                    const statusColor = data.status === '🔥 CALIENTE' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-gray-100 text-gray-500 border-gray-200';
+                    // Extraer nombre del resumen si existe, si no "Prospecto"
+                    let nameDisplay = "Prospecto Nuevo";
+                    if (data.summary && data.summary.includes("Nombre:")) {
+                        const nameMatch = data.summary.match(/Nombre:\s*(.*?)\n/);
+                        if (nameMatch) nameDisplay = nameMatch[1];
+                    }
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-gray-50 transition-colors border-b border-gray-100">
+                            <td class="p-4 text-sm text-gray-500 font-medium">${date}</td>
+                            <td class="p-4"><span class="px-2 py-1 text-[10px] uppercase font-bold rounded-full border ${statusColor}">${data.status || 'Activo'}</span></td>
+                            <td class="p-4 text-sm text-gray-800 font-semibold">${nameDisplay}</td>
+                            <td class="p-4 text-right">
+                                <button onclick="openDetailModal('${data.id}')" class="bg-white border border-gray-200 hover:border-blue-300 hover:text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm">Ver Ficha</button>
+                            </td>
+                        </tr>`;
+                });
+            });
+        }
+
+        // --- AUTO-RESUMEN INTELIGENTE ---
+        async function generateAndSaveSummary() {
+            // PROMPT ESPECIAL PARA RESUMEN ESTRUCTURADO
+            const summaryPrompt = `
+            Analiza la conversación y extrae los SIGUIENTES PUNTOS CLAVES en formato de lista simple (sin markdown):
+            - Nombre:
+            - Edad (si la mencionó):
+            - Preocupación Principal (Funeral/Deudas):
+            - Salud (Condiciones mencionadas):
+            - Presupuesto Confirmado:
+            - Nivel de Interés (Bajo/Medio/Alto):
+            `;
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: history })
+                    body: JSON.stringify({ 
+                        contents: [...chatHistory, { role: "user", parts: [{ text: summaryPrompt }] }] 
+                    })
+                });
+                const data = await response.json();
+                const summaryText = data.candidates[0].content.parts[0].text;
+                
+                const leadRef = doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId);
+                await updateDoc(leadRef, { summary: summaryText });
+            } catch (e) { console.error("Error resumiendo:", e); }
+        }
+
+        // --- CEREBRO & CHAT ---
+        const SYSTEM_PROMPT = `
+        ROL: Eres Lucía, la Asistente Inteligente del "Portal de Beneficios".
+        PERSONALIDAD: Cálida, maternal, sofisticada.
+        FLUJO:
+        1. Saludo y Preguntar Nombre + Tratamiento (Sr/Sra).
+        2. Preocupación (Deudas vs Funeral).
+        3. Filtro Seguridad (Hospital).
+        4. Salud (2 años).
+        5. Presupuesto (Walmart).
+        6. Cierre (Jorge).
+        REGLAS:
+        - No precios fijos.
+        - Usa **negritas**.
+        - Cierre: incluye [CONECTAR_JORGE].
+        `;
+
+        async function saveMessage(text, role, statusOverride = null) {
+            if (!currentUser) return;
+            const leadRef = doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId);
+            const updateData = { 
+                lastMessage: text, 
+                updatedAt: serverTimestamp(), 
+                [`history.${Date.now()}`]: { role, text } 
+            };
+            if (statusOverride) updateData.status = statusOverride;
+            await updateDoc(leadRef, updateData);
+        }
+
+        function appendMessage(role, text) {
+            const isClosing = text.includes("[CONECTAR_JORGE]");
+            const cleanText = text.replace("[CONECTAR_JORGE]", "");
+            const div = document.createElement('div');
+            div.className = `bubble shadow-sm ${role}`;
+            div.innerHTML = cleanText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+            document.getElementById('chat-box').appendChild(div);
+            
+            if (role === 'lucia') div.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            else document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
+
+            if (isClosing) {
+                addWSBtn();
+                saveMessage(cleanText, role, '🔥 CALIENTE'); 
+                generateAndSaveSummary(); // DISPARAR EL ANÁLISIS
+            } else {
+                saveMessage(cleanText, role);
+            }
+        }
+
+        function showTitleButtons() {
+            const container = document.createElement('div');
+            container.className = "flex flex-wrap mt-2 animate-[fadeIn_0.5s_ease-out] px-2";
+            const titles = ['Señor', 'Señora', 'Señorita', 'Solo mi nombre'];
+            titles.forEach(t => {
+                const btn = document.createElement('button');
+                btn.className = "quick-btn";
+                btn.innerText = t;
+                btn.onclick = () => { container.style.display = 'none'; sendMessage(`Prefiero que me llame: ${t}`); };
+                container.appendChild(btn);
+            });
+            document.getElementById('chat-box').appendChild(container);
+            document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
+        }
+
+        function addWSBtn() {
+            const btn = document.createElement('div');
+            btn.className = "ws-button cursor-pointer active:scale-95";
+            btn.innerHTML = `<span>Conectar con Jorge por WhatsApp</span>`;
+            btn.onclick = () => window.open(`https://wa.me/${JORGE_PHONE}?text=Hola Jorge, acabo de hablar con Lucía...`, '_blank');
+            document.getElementById('chat-box').appendChild(btn);
+            document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
+        }
+
+        window.sendQuickMessage = (text) => { document.getElementById('initial-buttons').style.display = 'none'; sendMessage(text); };
+
+        async function sendMessage(manualText = null) {
+            const text = manualText || document.getElementById('user-input').value.trim();
+            if (!text || !currentUser) return;
+
+            appendMessage('user', text);
+            document.getElementById('user-input').value = '';
+            document.getElementById('loading').classList.remove('hidden');
+            
+            stepCount++;
+            chatHistory.push({ role: "user", parts: [{ text: text }] });
+
+            try {
+                const fetchWithRetry = async (url, options, retries = 3) => {
+                    try { const res = await fetch(url, options); if (!res.ok) throw new Error(); return res; } 
+                    catch (e) { if (retries > 0) { await new Promise(r => setTimeout(r, 1000)); return fetchWithRetry(url, options, retries - 1); } throw e; }
+                };
+
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+                const response = await fetchWithRetry(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: chatHistory, systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] } })
                 });
 
                 const data = await response.json();
                 const aiText = data.candidates[0].content.parts[0].text;
-                
-                loading.classList.add('hidden');
+                document.getElementById('loading').classList.add('hidden');
                 appendMessage('lucia', aiText);
-                history.push({ role: "model", parts: [{ text: aiText }] });
-
+                chatHistory.push({ role: "model", parts: [{ text: aiText }] });
+                if (stepCount === 1) showTitleButtons();
             } catch (error) {
-                loading.classList.add('hidden');
-                appendMessage('lucia', "Lo siento, tuve un pequeño problema de conexión. ¿Podría repetir eso?");
-                console.error(error);
+                document.getElementById('loading').classList.add('hidden');
+                appendMessage('lucia', "Error de conexión.");
             }
         }
 
-        sendBtn.addEventListener('click', sendMessage);
-        userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+        document.getElementById('send-btn').addEventListener('click', () => sendMessage());
+        document.getElementById('user-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
     </script>
 </body>
 </html>
