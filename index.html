@@ -5,32 +5,57 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartLeads | Asistente Inteligente</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f2f2f7; color: #1d1d1f; }
+        /* --- ESTILOS VISUALES (Apple Style) --- */
+        body { font-family: 'Inter', sans-serif; background-color: #f2f2f7; color: #1d1d1f; -webkit-tap-highlight-color: transparent; }
         .chat-container { height: 72vh; scroll-behavior: smooth; }
+        
         .bubble { 
             max-width: 85%; padding: 14px 18px; border-radius: 22px; margin-bottom: 12px; 
             font-size: 15px; line-height: 1.5; box-shadow: 0 2px 5px rgba(0,0,0,0.03); 
-            animation: messageSlide 0.4s cubic-bezier(0.1, 0.9, 0.2, 1); 
+            animation: slideIn 0.3s cubic-bezier(0.1, 0.9, 0.2, 1); 
         }
-        @keyframes messageSlide { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
         .lucia { background: #ffffff; color: #1d1d1f; align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid rgba(0,0,0,0.05); }
         .user { background: #007AFF; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+
+        /* Animación de carga */
         .typing-dot { width: 6px; height: 6px; background: #8e8e93; border-radius: 50%; animation: typing 1.4s infinite ease-in-out both; }
         .typing-dot:nth-child(1) { animation-delay: -0.32s; }
         .typing-dot:nth-child(2) { animation-delay: -0.16s; }
         @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+        /* Scrollbar oculta */
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .ws-button { background: #34C759; color: white; padding: 18px; border-radius: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 15px; box-shadow: 0 10px 20px rgba(52, 199, 89, 0.2); cursor: pointer; transition: all 0.3s; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Componentes UI */
+        .ws-button { 
+            background: #34C759; color: white; padding: 16px; border-radius: 20px; font-weight: 700; 
+            display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 15px; 
+            box-shadow: 0 8px 20px rgba(52, 199, 89, 0.25); cursor: pointer; transition: transform 0.2s; 
+        }
         .ws-button:active { transform: scale(0.96); }
-        .quick-btn { border: 1px solid #007AFF; color: #007AFF; background: rgba(255,255,255,0.9); padding: 10px 20px; border-radius: 25px; font-size: 14px; font-weight: 600; margin-right: 8px; margin-top: 10px; cursor: pointer; transition: all 0.2s; }
-        .quick-btn:hover { background: #007AFF; color: white; }
+        
+        .quick-btn { 
+            border: 1px solid #007AFF; color: #007AFF; background: rgba(255,255,255,0.95); 
+            padding: 9px 18px; border-radius: 25px; font-size: 14px; font-weight: 600; 
+            margin-right: 6px; margin-top: 8px; cursor: pointer; transition: all 0.2s; 
+            backdrop-filter: blur(4px);
+        }
+        .quick-btn:active { background: #007AFF; color: white; transform: scale(0.95); }
+        
         .view-hidden { display: none !important; }
-        .admin-trigger { cursor: pointer; padding: 15px; opacity: 0.4; }
+        .admin-trigger { cursor: pointer; padding: 15px; opacity: 0.3; transition: opacity 0.3s; }
+        .admin-trigger:hover { opacity: 1; }
+
+        /* Modal CRM */
         .crm-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 60; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
         .crm-modal.active { opacity: 1; pointer-events: auto; }
-        .crm-card { background: white; width: 95%; max-width: 550px; max-height: 85vh; border-radius: 30px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,0.3); }
+        .crm-card { background: white; width: 95%; max-width: 600px; max-height: 85vh; border-radius: 32px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .crm-modal.active .crm-card { transform: scale(1); }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen">
@@ -41,14 +66,11 @@
             <div class="relative">
                 <img src="https://img.freepik.com/free-photo/portrait-young-businesswoman-holding-eyeglasses-hand-against-gray-background_23-2148029483.jpg?w=200" 
                      class="w-12 h-12 rounded-full object-cover border border-gray-100 shadow-sm" alt="Lucía">
-                <span class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></span>
+                <span id="db-status-dot" class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></span>
             </div>
             <div class="flex-grow">
-                <h1 class="text-[18px] font-bold text-gray-900 tracking-tight leading-tight">Lucía</h1>
+                <h1 class="text-[18px] font-bold text-gray-900 tracking-tight">Lucía</h1>
                 <p class="text-[12px] text-green-600 font-bold uppercase tracking-wider">Asistente en línea</p>
-            </div>
-            <div class="text-gray-300">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>
             </div>
         </div>
 
@@ -60,7 +82,7 @@
         </div>
 
         <div id="loading" class="px-8 py-2 hidden">
-            <div class="bg-gray-200/50 inline-flex items-center gap-1.5 px-4 py-2 rounded-full">
+            <div class="bg-gray-200/60 inline-flex items-center gap-1.5 px-4 py-2 rounded-full">
                 <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
             </div>
         </div>
@@ -75,7 +97,7 @@
                 </button>
             </div>
             <p class="text-center text-[10px] text-gray-400 mt-3 font-medium select-none">
-                <span class="admin-trigger" onclick="openPinModal()">SmartLeads</span> • Conexión Segura y Privada
+                <span class="admin-trigger" onclick="openPinModal()">SmartLeads</span> • Conexión Segura
             </p>
         </div>
     </div>
@@ -84,14 +106,13 @@
     <div id="pin-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-[32px] shadow-2xl p-8 w-full max-w-xs transform transition-all">
             <div class="text-center mb-6">
-                <div class="mx-auto w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center mb-4 text-blue-600 font-bold text-xl tracking-tighter">PIN</div>
                 <h3 class="text-xl font-black text-gray-900">Control Jorge</h3>
                 <p class="text-sm text-gray-500">Ingrese PIN (123456)</p>
             </div>
             <input type="password" id="pin-input" maxlength="6" class="w-full text-center text-3xl tracking-[0.4em] font-black border-b-2 border-gray-100 py-2 mb-8 focus:border-blue-500 outline-none bg-transparent" placeholder="••••••">
             <div class="grid grid-cols-2 gap-4">
-                <button onclick="closePinModal()" class="py-3 rounded-2xl bg-gray-100 text-gray-600 font-bold">Cancelar</button>
-                <button onclick="verifyPin()" class="py-3 rounded-2xl bg-blue-600 text-white font-bold shadow-lg">Entrar</button>
+                <button onclick="closePinModal()" class="py-3 rounded-2xl bg-gray-100 text-gray-600 font-bold active:scale-95 transition-transform">Cancelar</button>
+                <button onclick="verifyPin()" class="py-3 rounded-2xl bg-blue-600 text-white font-bold shadow-lg active:scale-95 transition-transform">Entrar</button>
             </div>
         </div>
     </div>
@@ -99,34 +120,38 @@
     <!-- PANEL ADMIN -->
     <div id="admin-view" class="w-full max-w-6xl bg-white shadow-2xl min-h-[92vh] flex-col overflow-hidden rounded-[40px] border border-gray-200 view-hidden">
         <div class="bg-slate-900 p-6 text-white flex flex-wrap justify-between items-center gap-4">
-            <h1 class="text-2xl font-black tracking-tight">SmartLeads CRM</h1>
             <div class="flex items-center gap-3">
-                <button onclick="showAdminTab('leads')" id="tab-leads" class="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg">Leads</button>
-                <button onclick="showAdminTab('training')" id="tab-training" class="bg-slate-700 hover:bg-slate-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold">Entrenar IA</button>
-                <button onclick="switchView('client')" class="bg-red-500/10 text-red-400 hover:bg-red-500/20 px-4 py-2 rounded-xl text-sm font-bold ml-4">Cerrar</button>
+                <h1 class="text-2xl font-black tracking-tight">SmartLeads</h1>
+                <span class="bg-green-500/20 text-green-400 text-[10px] font-bold px-2 py-1 rounded-md border border-green-500/30">ONLINE</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="showAdminTab('leads')" id="tab-leads" class="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg transition-all">Leads</button>
+                <button onclick="showAdminTab('training')" id="tab-training" class="bg-slate-700 hover:bg-slate-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all">Entrenar</button>
+                <button onclick="switchView('client')" class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-sm font-bold ml-2 transition-all">Salir</button>
             </div>
         </div>
         <div id="section-leads" class="flex-grow p-0 overflow-y-auto max-h-[80vh]">
             <table class="w-full text-left border-collapse">
                 <thead class="bg-gray-50 sticky top-0 z-10">
                     <tr class="text-gray-400 border-b border-gray-100 text-[11px] uppercase font-black tracking-widest">
-                        <th class="p-5 w-40">Fecha</th>
-                        <th class="p-5 w-32">Estado</th>
+                        <th class="p-5">Fecha</th>
+                        <th class="p-5">Estado</th>
                         <th class="p-5">Prospecto</th>
-                        <th class="p-5 text-right">Ficha</th>
+                        <th class="p-5 text-right">Acción</th>
                     </tr>
                 </thead>
                 <tbody id="leads-table-body" class="divide-y divide-gray-50"></tbody>
             </table>
         </div>
         <div id="section-training" class="flex-grow p-10 bg-gray-50 overflow-y-auto hidden">
-            <div class="max-w-4xl mx-auto">
-                <div class="bg-white p-8 rounded-[35px] border border-gray-100 shadow-sm">
-                    <h2 class="text-2xl font-black text-gray-900 mb-6">Guion de Lucía</h2>
-                    <textarea id="prompt-editor" class="w-full h-80 p-6 border-2 border-gray-100 rounded-[25px] font-sans text-[16px] leading-relaxed bg-slate-50 focus:bg-white outline-none shadow-inner"></textarea>
-                    <div class="mt-8 flex justify-end">
-                        <button onclick="savePrompt()" class="bg-purple-600 hover:bg-purple-700 text-white px-10 py-4 rounded-2xl font-black shadow-xl transition-transform active:scale-95">Guardar Entrenamiento</button>
-                    </div>
+            <div class="max-w-4xl mx-auto bg-white p-8 rounded-[35px] border border-gray-100 shadow-sm">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-black text-gray-900">Instrucciones de Lucía</h2>
+                    <button onclick="restoreDefaultPrompt()" class="text-xs font-bold text-blue-500 hover:underline">Restaurar</button>
+                </div>
+                <textarea id="prompt-editor" class="w-full h-80 p-6 border-2 border-gray-100 rounded-[25px] font-sans text-[15px] leading-relaxed bg-slate-50 focus:bg-white focus:border-blue-500 outline-none transition-all shadow-inner"></textarea>
+                <div class="mt-6 flex justify-end">
+                    <button onclick="savePrompt()" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-2xl font-bold shadow-lg active:scale-95 transition-transform">Guardar Cambios</button>
                 </div>
             </div>
         </div>
@@ -136,14 +161,17 @@
     <div id="lead-detail-modal" class="crm-modal">
         <div class="crm-card">
             <div class="bg-slate-50 p-6 border-b border-gray-100 flex justify-between items-center">
-                <h3 class="text-xl font-black text-gray-900">Resumen del Lead</h3>
+                <h3 class="text-lg font-black text-gray-900">Ficha del Prospecto</h3>
                 <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600 bg-white p-2 rounded-full shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></button>
             </div>
             <div class="p-8 bg-white flex-grow overflow-y-auto">
-                <div id="detail-summary" class="text-[17px] text-slate-800 bg-blue-50/50 p-8 rounded-[30px] border border-blue-100 leading-relaxed font-medium">Cargando...</div>
-                <div id="detail-history" class="mt-6 space-y-2 text-xs text-gray-400 italic"></div>
+                <div id="detail-summary" class="text-[16px] text-slate-800 bg-blue-50/50 p-6 rounded-[25px] border border-blue-100 leading-relaxed font-medium whitespace-pre-line shadow-sm">Cargando análisis...</div>
+                <div class="mt-6">
+                    <button onclick="toggleHistory()" class="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 hover:text-blue-500">Ver Chat Completo &darr;</button>
+                    <div id="detail-history" class="hidden mt-4 space-y-2 pl-4 border-l-2 border-gray-100 max-h-[200px] overflow-y-auto text-xs text-gray-500"></div>
+                </div>
             </div>
-            <div class="p-6 border-t bg-gray-50"><button onclick="window.open(`tel:${JORGE_PHONE}`)" class="w-full bg-green-600 text-white py-5 rounded-[22px] font-black shadow-xl">Llamar al Prospecto</button></div>
+            <div class="p-6 border-t bg-gray-50"><button onclick="window.open(`tel:${JORGE_PHONE}`)" class="w-full bg-green-600 text-white py-4 rounded-[20px] font-bold shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2">📞 Llamar Ahora</button></div>
         </div>
     </div>
 
@@ -152,129 +180,163 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, updateDoc, serverTimestamp, collection, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- SEGURIDAD: LLAVE DIVIDIDA ---
-        const PARTE_1 = "AIzaSyCPDuual8XBejuV"; 
-        const PARTE_2 = "UPbKecfonbIh6SNolDk";
-        const API_KEY = PARTE_1 + PARTE_2;
-        
+        // --- CONFIGURACIÓN ---
+        const P1 = "AIzaSyCPDuual8XBejuV"; const P2 = "UPbKecfonbIh6SNolDk"; // Tu API Key Dividida
+        const API_KEY = P1 + P2;
         const JORGE_PHONE = "14079553077";
         const isInCanvas = typeof __firebase_config !== 'undefined';
         const MODEL_NAME = isInCanvas ? "gemini-2.5-flash-preview-09-2025" : "gemini-1.5-flash";
-
         const sessionId = crypto.randomUUID();
+
+        // --- TU FIREBASE REAL ---
+        const myFirebaseConfig = {
+            apiKey: "AIzaSyA_-x6UEEVEJ7uAY8ohCrDussZ938QQ0B0",
+            authDomain: "luciaai-46c75.firebaseapp.com",
+            projectId: "luciaai-46c75",
+            storageBucket: "luciaai-46c75.firebasestorage.app",
+            messagingSenderId: "56311029362",
+            appId: "1:56311029362:web:2a09107f6c6f3a7b3ceceb",
+            measurementId: "G-KRMZBRX3JQ"
+        };
+
+        // --- VARIABLES DE ESTADO ---
         let chatHistory = []; let currentUser = null; let stepCount = 0;
-        let db, app, auth, appId = 'smartleads-app'; let useLocalStorage = false;
+        let db, app, auth, appId; let useLocalStorage = false;
 
         const DEFAULT_PROMPT = `Eres Lucía, Asistente Inteligente del Portal de Beneficios.
-OBJETIVO: Calificar prospectos cálidamente.
-FLUJO: 1. Nombre. 2. Tratamiento. 3. Dolor. 4. Salud. 5. Walmart. 6. Cierre.
+OBJETIVO: Calificar prospectos cálidamente y conectar con Jorge Guevara.
+FLUJO: 1. Nombre. 2. Tratamiento (Sr/Sra). 3. Dolor (Deudas/Funeral). 4. Filtro Salud (Hospital). 5. Salud General. 6. Presupuesto (Walmart). 7. Cierre.
 Reglas: No precios fijos. Usa **negritas**. Finaliza con [CONECTAR_JORGE].`;
-
         let currentSystemPrompt = DEFAULT_PROMPT;
 
+        // --- INICIALIZACIÓN ROBUSTA ---
         try {
-            if (isInCanvas) {
-                const config = JSON.parse(__firebase_config);
-                app = initializeApp(config); auth = getAuth(app); db = getFirestore(app);
-                appId = typeof __app_id !== 'undefined' ? __app_id : 'smartleads-app';
+            if (myFirebaseConfig.apiKey) {
+                app = initializeApp(myFirebaseConfig); appId = 'smartleads-prod'; 
+                auth = getAuth(app); db = getFirestore(app);
+                console.log("✅ Conectado a LuciaAI");
+            } else if (isInCanvas) {
+                app = initializeApp(JSON.parse(__firebase_config)); appId = 'smartleads-app';
+                auth = getAuth(app); db = getFirestore(app);
             } else { throw "local"; }
-        } catch (e) { useLocalStorage = true; }
+        } catch (e) { setupLocalMode(); }
+
+        function setupLocalMode() {
+            useLocalStorage = true; currentUser = { uid: 'local' };
+            const dot = document.getElementById('db-status-dot');
+            if(dot) dot.classList.replace('bg-green-500', 'bg-yellow-500');
+            saveLocalLead({ startedAt: new Date().toISOString(), lastMessage: 'Sesión Local', status: 'Navegando', summary: 'Pendiente...' });
+            loadSettings();
+        }
 
         const initAuth = async () => {
-            if (useLocalStorage) { currentUser = { uid: 'local' }; loadSettings(); return; }
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
-            else await signInAnonymously(auth);
+            if (useLocalStorage) return;
+            try {
+                if (isInCanvas && !myFirebaseConfig.apiKey) await signInWithCustomToken(auth, __initial_auth_token);
+                else await signInAnonymously(auth);
+            } catch (e) { console.warn("Auth falló, modo local."); setupLocalMode(); }
         };
 
         if (!useLocalStorage) {
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     currentUser = user; loadSettings();
-                    setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), { startedAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: 'Sesión iniciada', status: 'Navegando', summary: 'Pendiente...' }, { merge: true });
+                    setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), { startedAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: 'Chat iniciado', status: 'Navegando', summary: '...' }, { merge: true });
                 } else initAuth();
             });
-        } else { initAuth(); }
+        } else initAuth();
 
+        // --- UTILS ---
+        function saveLocalLead(data) {
+            const leads = JSON.parse(localStorage.getItem('sl_leads') || '{}');
+            leads[sessionId] = { ...leads[sessionId], ...data, id: sessionId, updatedAt: new Date().toISOString() };
+            localStorage.setItem('sl_leads', JSON.stringify(leads));
+        }
+        function getLocalLeads() { return Object.values(JSON.parse(localStorage.getItem('sl_leads') || '{}')).sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt)); }
+
+        // --- SETTINGS ---
         async function loadSettings() {
-            if (useLocalStorage) { currentSystemPrompt = localStorage.getItem('lucia_prompt') || DEFAULT_PROMPT; }
+            if (useLocalStorage) currentSystemPrompt = localStorage.getItem('lucia_prompt') || DEFAULT_PROMPT;
             else {
-                const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'));
-                if (snap.exists() && snap.data().prompt) currentSystemPrompt = snap.data().prompt;
+                try { const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config')); if (snap.exists()) currentSystemPrompt = snap.data().prompt; } catch (e) {}
             }
             document.getElementById('prompt-editor').value = currentSystemPrompt;
         }
-
         window.savePrompt = async () => {
-            const val = document.getElementById('prompt-editor').value;
-            currentSystemPrompt = val;
-            if (useLocalStorage) localStorage.setItem('lucia_prompt', val);
+            const val = document.getElementById('prompt-editor').value; currentSystemPrompt = val;
+            if(useLocalStorage) localStorage.setItem('lucia_prompt', val);
             else await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { prompt: val }, { merge: true });
-            alert("✅ Cerebro actualizado.");
+            alert("✅ Guardado.");
         };
+        window.restoreDefaultPrompt = () => document.getElementById('prompt-editor').value = DEFAULT_PROMPT;
 
+        // --- UI ---
         window.openPinModal = () => { document.getElementById('pin-modal').classList.remove('hidden'); document.getElementById('pin-input').focus(); };
         window.closePinModal = () => document.getElementById('pin-modal').classList.add('hidden');
-        window.verifyPin = () => { if (document.getElementById('pin-input').value === "123456") { closePinModal(); switchView('admin'); } else alert("PIN Incorrecto"); };
-        
+        window.verifyPin = () => { if (document.getElementById('pin-input').value === "123456") { closePinModal(); switchView('admin'); } else alert("Error"); };
         window.switchView = (v) => {
             document.getElementById('admin-view').classList.toggle('view-hidden', v !== 'admin');
             document.getElementById('client-view').classList.toggle('view-hidden', v === 'admin');
             if(v === 'admin') { document.getElementById('admin-view').classList.add('flex'); loadLeads(); }
         };
-
         window.showAdminTab = (t) => {
             document.getElementById('section-leads').classList.toggle('hidden', t !== 'leads');
             document.getElementById('section-training').classList.toggle('hidden', t !== 'training');
+            document.getElementById('tab-leads').classList.toggle('bg-blue-600', t === 'leads');
+            document.getElementById('tab-leads').classList.toggle('bg-slate-700', t !== 'leads');
+            document.getElementById('tab-training').classList.toggle('bg-blue-600', t === 'training');
+            document.getElementById('tab-training').classList.toggle('bg-slate-700', t !== 'training');
         };
-
+        window.toggleHistory = () => document.getElementById('detail-history').classList.toggle('hidden');
         window.openDetailModal = async (id) => {
             document.getElementById('lead-detail-modal').classList.add('active');
             let data;
-            if (useLocalStorage) data = JSON.parse(localStorage.getItem('sl_leads_data') || '{}')[id];
-            else { const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', id)); if(snap.exists()) data = snap.data(); }
-            if (data) {
+            if(useLocalStorage) data = JSON.parse(localStorage.getItem('sl_leads')||'{}')[id];
+            else { const s = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', id)); if(s.exists()) data = s.data(); }
+            if(data) {
                 document.getElementById('detail-summary').innerText = data.summary || "Generando...";
-                document.getElementById('detail-history').innerHTML = Object.values(data.history || {}).sort((a,b)=>a.ts-b.ts).map(m => `<div>${m.role}: ${m.text}</div>`).join('');
+                document.getElementById('detail-history').innerHTML = Object.values(data.history||{}).sort((a,b)=>a.ts-b.ts).map(m=>`<div><b>${m.role}:</b> ${m.text}</div>`).join('');
             }
         };
         window.closeDetailModal = () => document.getElementById('lead-detail-modal').classList.remove('active');
 
         function loadLeads() {
-            const tbody = document.getElementById('leads-table-body');
             const render = (leads) => {
-                tbody.innerHTML = leads.map(l => {
-                    const ts = l.updatedAt?.seconds * 1000 || l.updatedAt;
-                    const date = new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                    let name = l.summary?.split("Nombre:")[1]?.split("\n")[0] || "Prospecto";
-                    return `<tr class="border-b border-gray-50"><td class="p-5 font-mono text-[10px]">${date}</td><td class="p-5 font-bold text-[10px]">${l.status}</td><td class="p-5 font-bold">${name}</td><td class="p-5 text-right"><button onclick="openDetailModal('${l.id}')" class="text-blue-600 font-black">Ver</button></td></tr>`;
+                document.getElementById('leads-table-body').innerHTML = leads.map(l => {
+                    const d = new Date(l.updatedAt?.seconds*1000 || l.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                    const name = l.summary?.split("Nombre:")[1]?.split("\n")[0] || "Prospecto";
+                    const isHot = l.status === '🔥 CALIENTE';
+                    return `<tr class="border-b border-gray-100 hover:bg-gray-50"><td class="p-5 font-mono text-[10px] text-gray-400">${d}</td><td class="p-5"><span class="px-2 py-1 rounded text-[10px] font-bold ${isHot ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-500'}">${l.status}</span></td><td class="p-5 font-bold text-sm text-gray-800">${name}</td><td class="p-5 text-right"><button onclick="openDetailModal('${l.id}')" class="text-blue-600 font-bold text-xs">Ver</button></td></tr>`;
                 }).join('');
             };
-            if (useLocalStorage) render(Object.values(JSON.parse(localStorage.getItem('sl_leads_data')||'{}')));
-            else onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'leads'), snap => {
-                let data = []; snap.forEach(d => data.push({id:d.id, ...d.data()}));
-                render(data.sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0)));
+            if(useLocalStorage) render(getLocalLeads());
+            else onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'leads'), s => {
+                let d = []; s.forEach(x => d.push({id:x.id, ...x.data()}));
+                render(d.sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0)));
             });
         }
 
         async function save(txt, role, status = null) {
-            const data = { lastMessage: txt, [`history.${Date.now()}`]: { role, text: txt, ts: Date.now() }, updatedAt: useLocalStorage ? Date.now() : serverTimestamp() };
-            if(status) data.status = status;
-            if(useLocalStorage) { const d = JSON.parse(localStorage.getItem('sl_leads_data')||'{}'); d[sessionId] = {...d[sessionId], ...data, id:sessionId}; localStorage.setItem('sl_leads_data', JSON.stringify(d)); }
-            else if (currentUser) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), data);
+            const d = { lastMessage: txt, [`history.${Date.now()}`]: { role, text: txt, ts: Date.now() }, updatedAt: useLocalStorage ? new Date().toISOString() : serverTimestamp() };
+            if(status) d.status = status;
+            if(useLocalStorage) saveLocalLead(d);
+            else if(currentUser) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), d);
         }
 
         async function analyzeLead() {
-            const prompt = "Analiza el chat y resume en 3 lineas: Nombre, Dolor, Salud y Presupuesto.";
-            try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [...chatHistory, { role: "user", parts: [{ text: prompt }] }] })
-                });
-                const data = await res.json();
-                const summary = data.candidates[0].content.parts[0].text;
-                if (useLocalStorage) { const d = JSON.parse(localStorage.getItem('sl_leads_data')||'{}'); d[sessionId].summary = summary; localStorage.setItem('sl_leads_data', JSON.stringify(d)); }
-                else await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), { summary });
-            } catch (e) {}
+            const models = ["gemini-2.5-flash-preview-09-2025", "gemini-1.5-flash"];
+            const p = "Analiza el chat y resume: Nombre, Dolor, Salud, Presupuesto.";
+            for (const m of models) {
+                try {
+                    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${API_KEY}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ contents: [...chatHistory, { role: "user", parts: [{ text: p }] }] }) });
+                    if(!r.ok) continue;
+                    const d = await r.json();
+                    const s = d.candidates[0].content.parts[0].text;
+                    if(useLocalStorage) saveLocalLead({summary: s});
+                    else await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), {summary: s});
+                    break;
+                } catch(e){}
+            }
         }
 
         function append(role, text) {
@@ -294,33 +356,34 @@ Reglas: No precios fijos. Usa **negritas**. Finaliza con [CONECTAR_JORGE].`;
 
         async function sendMessage(manualText = null) {
             const text = manualText || document.getElementById('user-input').value.trim();
-            if (!text || (!useLocalStorage && !currentUser)) return;
+            if (!text) return;
             append('user', text); document.getElementById('user-input').value = '';
             document.getElementById('loading').classList.remove('hidden');
             stepCount++; chatHistory.push({ role: "user", parts: [{ text }] });
-            try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: chatHistory, systemInstruction: { parts: [{ text: currentSystemPrompt }] } })
-                });
-                if (!res.ok) { const err = await res.json(); throw new Error(err.error?.message || "Error"); }
-                const data = await res.json();
-                const aiTxt = data.candidates[0].content.parts[0].text;
-                document.getElementById('loading').classList.add('hidden');
-                append('lucia', aiTxt); chatHistory.push({ role: "model", parts: [{ text: aiTxt }] });
-                if (stepCount === 1) { 
-                    const c = document.createElement('div'); c.className = "flex flex-wrap mt-1 mb-6";
-                    ['Señor', 'Señora', 'Srta'].forEach(t => {
-                        const b = document.createElement('button'); b.className = "quick-btn"; b.innerText = t;
-                        b.onclick = () => { c.remove(); sendMessage(`Prefiero que me llame: ${t}`); };
-                        c.appendChild(b);
-                    });
-                    document.getElementById('chat-box').appendChild(c);
-                }
-            } catch (e) { 
-                document.getElementById('loading').classList.add('hidden'); 
-                append('lucia', `Hipo técnico: ${e.message}`); 
+            
+            const models = ["gemini-2.5-flash-preview-09-2025", "gemini-1.5-flash"];
+            let success = false;
+            for (const m of models) {
+                try {
+                    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${API_KEY}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ contents: chatHistory, systemInstruction: { parts: [{ text: currentSystemPrompt }] } }) });
+                    if(!r.ok) continue;
+                    const d = await r.json();
+                    const t = d.candidates[0].content.parts[0].text;
+                    document.getElementById('loading').classList.add('hidden');
+                    append('lucia', t); chatHistory.push({ role: "model", parts: [{ text: t }] });
+                    if(stepCount === 1) {
+                        const c = document.createElement('div'); c.className = "flex flex-wrap mt-1 mb-6";
+                        ['Señor', 'Señora', 'Srta'].forEach(val => {
+                            const b = document.createElement('button'); b.className = "quick-btn"; b.innerText = val;
+                            b.onclick = () => { c.remove(); sendMessage(`Prefiero que me llame: ${val}`); };
+                            c.appendChild(b);
+                        });
+                        document.getElementById('chat-box').appendChild(c);
+                    }
+                    success = true; break;
+                } catch(e){}
             }
+            if(!success) { document.getElementById('loading').classList.add('hidden'); append('lucia', "Error técnico."); }
         }
 
         document.getElementById('send-btn').addEventListener('click', () => sendMessage());
