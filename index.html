@@ -57,7 +57,8 @@
         <div class="p-4 bg-white/80 backdrop-blur-xl border-t border-gray-200/50 pb-6 md:pb-4">
             <div class="flex items-center gap-2">
                 <div class="flex-grow bg-gray-100/80 rounded-full border border-transparent focus-within:bg-white focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                    <input id="user-input" type="text" placeholder="Escribe un mensaje..." class="w-full bg-transparent px-4 py-2.5 outline-none text-[16px] text-gray-800 placeholder-gray-400 rounded-full">
+                    <input id="user-input" type="text" placeholder="Escribe un mensaje..." 
+                           class="w-full bg-transparent px-4 py-2.5 outline-none text-[16px] text-gray-800 placeholder-gray-400 rounded-full">
                 </div>
                 <button id="send-btn" class="bg-[#007AFF] hover:bg-[#0062cc] text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 pl-0.5"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>
@@ -90,7 +91,7 @@
                 <h1 class="text-xl font-bold tracking-tight">Panel de Leads</h1>
                 <div class="flex items-center gap-2 mt-1">
                     <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                    <p class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Base de Datos en Vivo</p>
+                    <p id="connection-status" class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Modo Local (Sin Nube)</p>
                 </div>
             </div>
             <button onclick="switchView('client')" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg text-sm font-medium transition-all">&larr; Volver al Chat</button>
@@ -131,12 +132,10 @@
                     Resumen del Agente
                 </h4>
                 
-                <!-- Aquí va el texto analizado por la IA -->
                 <div id="detail-summary" class="text-base text-gray-700 bg-blue-50/50 p-5 rounded-2xl border border-blue-100 leading-relaxed whitespace-pre-line font-medium shadow-sm">
                     Cargando análisis...
                 </div>
 
-                <!-- Chat Oculto (Acordeón) -->
                 <div class="mt-8 border-t pt-4">
                     <button onclick="toggleHistory()" id="toggle-history-btn" class="text-sm text-gray-400 hover:text-blue-600 font-medium flex items-center gap-1 w-full justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors">
                         <span>Ver transcripción completa del chat</span>
@@ -148,7 +147,6 @@
                 </div>
             </div>
 
-            <!-- Footer: Llamada -->
             <div class="p-4 border-t bg-gray-50 flex justify-end gap-2">
                 <button onclick="window.open(`tel:${currentLeadPhone}`)" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" /></svg>
@@ -164,13 +162,7 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, updateDoc, serverTimestamp, collection, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'smartleads-app';
-
-        // --- CLAVE DIVIDIDA (Seguridad) ---
+        // --- SEGURIDAD DE CLAVE ---
         const PARTE_A = "AIzaSyCjhXpHtovaqye6"; 
         const PARTE_B = "O4r2ir2tT5lksOIrNfs";
         const API_KEY = PARTE_A + PARTE_B;
@@ -183,26 +175,63 @@
         let currentUser = null;
         let stepCount = 0;
         window.currentLeadPhone = ""; 
+        let db = null;
+        let app = null;
+        let auth = null;
+        let appId = 'smartleads-local';
+        let useLocalStorage = false; // Bandera de seguridad
+
+        // --- INICIALIZACIÓN SEGURA (PARACAÍDAS) ---
+        try {
+            if (typeof __firebase_config !== 'undefined') {
+                const firebaseConfig = JSON.parse(__firebase_config);
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'smartleads-app';
+            } else {
+                throw new Error("No config");
+            }
+        } catch (e) {
+            console.warn("⚠️ Modo GitHub/Render: Usando almacenamiento local (Sin Firebase)");
+            useLocalStorage = true;
+            document.getElementById('connection-status').innerText = "Modo Local (Dispositivo)";
+            document.getElementById('connection-status').classList.replace('text-slate-400', 'text-yellow-400');
+        }
 
         // --- AUTH ---
         const initAuth = async () => {
+            if (useLocalStorage) { currentUser = { uid: 'local-user', isAnonymous: true }; return; }
+            
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
             else await signInAnonymously(auth);
         };
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                const leadRef = doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId);
-                setDoc(leadRef, { 
-                    startedAt: serverTimestamp(), 
-                    updatedAt: serverTimestamp(), 
-                    lastMessage: 'Chat iniciado',
-                    status: 'Visitando', 
-                    summary: 'Esperando análisis...' 
-                }, { merge: true });
-            } else initAuth();
-        });
+        if (!useLocalStorage) {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUser = user;
+                    const leadRef = doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId);
+                    setDoc(leadRef, { startedAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: 'Chat iniciado', status: 'Visitando', summary: 'Esperando análisis...' }, { merge: true });
+                } else initAuth();
+            });
+        } else {
+            // Inicializar sesión local
+            currentUser = { uid: 'local-user' };
+            saveLocalLead({ startedAt: new Date().toISOString(), lastMessage: 'Chat iniciado', status: 'Visitando', summary: 'Esperando...' });
+        }
+
+        // --- FUNCIONES LOCAL STORAGE (Fallback) ---
+        function saveLocalLead(data) {
+            const leads = JSON.parse(localStorage.getItem('smartleads_data') || '{}');
+            leads[sessionId] = { ...leads[sessionId], ...data, id: sessionId, updatedAt: new Date().toISOString() };
+            localStorage.setItem('smartleads_data', JSON.stringify(leads));
+        }
+
+        function getLocalLeads() {
+            const leads = JSON.parse(localStorage.getItem('smartleads_data') || '{}');
+            return Object.values(leads).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        }
 
         // --- PIN LOGIC ---
         window.openPinModal = () => { document.getElementById('pin-modal').classList.remove('hidden'); document.getElementById('pin-input').focus(); };
@@ -236,74 +265,78 @@
             
             modal.classList.add('active');
             historyContainer.innerHTML = '';
-            // Resumen por defecto
             summaryEl.innerHTML = '<span class="text-gray-400 italic">Cargando datos...</span>'; 
             document.getElementById('detail-id').innerText = `ID: ${leadId.substring(0,8)}`;
 
-            try {
-                const docSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', leadId));
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    
-                    // MOSTRAR RESUMEN (Prioridad)
-                    if (data.summary && data.summary !== 'Esperando análisis...') {
-                        summaryEl.innerText = data.summary;
-                    } else {
-                        summaryEl.innerHTML = '<span class="text-gray-400">Conversación en curso o incompleta.</span>';
-                    }
-                    
-                    // CARGAR HISTORIAL (Oculto)
-                    if (data.history) {
-                        const messages = Object.entries(data.history).sort((a, b) => a[0] - b[0]).map(([_, val]) => val);
-                        messages.forEach(msg => {
-                            const isLucia = msg.role === 'lucia';
-                            const bubble = document.createElement('div');
-                            bubble.className = `p-2 rounded-lg text-xs max-w-[90%] mb-1 ${isLucia ? 'bg-white border text-gray-600' : 'bg-blue-50 text-blue-800 ml-auto text-right'}`;
-                            bubble.innerText = msg.text;
-                            historyContainer.appendChild(bubble);
-                        });
-                    }
+            let data;
+            if (useLocalStorage) {
+                const leads = JSON.parse(localStorage.getItem('smartleads_data') || '{}');
+                data = leads[leadId];
+            } else {
+                try {
+                    const docSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', leadId));
+                    if (docSnap.exists()) data = docSnap.data();
+                } catch (e) { console.error(e); }
+            }
+
+            if (data) {
+                summaryEl.innerText = data.summary || "No hay resumen disponible aún.";
+                if (data.history) {
+                    const messages = Object.entries(data.history).sort((a, b) => a[0] - b[0]).map(([_, val]) => val);
+                    messages.forEach(msg => {
+                        const isLucia = msg.role === 'lucia';
+                        const bubble = document.createElement('div');
+                        bubble.className = `p-2 rounded-lg text-xs max-w-[90%] mb-1 ${isLucia ? 'bg-white border text-gray-600' : 'bg-blue-50 text-blue-800 ml-auto text-right'}`;
+                        bubble.innerText = msg.text;
+                        historyContainer.appendChild(bubble);
+                    });
                 }
-            } catch (e) { console.error(e); }
+            }
         };
 
         window.closeDetailModal = () => document.getElementById('lead-detail-modal').classList.remove('active');
 
         function loadLeads() {
-            const leadsRef = collection(db, 'artifacts', appId, 'public', 'data', 'leads');
-            onSnapshot(leadsRef, (snapshot) => {
-                const tbody = document.getElementById('leads-table-body');
-                tbody.innerHTML = '';
-                let leads = [];
-                snapshot.forEach(doc => leads.push({ id: doc.id, ...doc.data() }));
-                leads.sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0));
+            const tbody = document.getElementById('leads-table-body');
+            tbody.innerHTML = '';
 
-                leads.forEach(data => {
-                    const date = data.updatedAt ? new Date(data.updatedAt.seconds * 1000).toLocaleString('es-ES', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' }) : 'Hoy';
-                    const statusColor = data.status === '🔥 CALIENTE' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-gray-100 text-gray-500 border-gray-200';
-                    // Extraer nombre del resumen si existe, si no "Prospecto"
-                    let nameDisplay = "Prospecto Nuevo";
-                    if (data.summary && data.summary.includes("Nombre:")) {
-                        const nameMatch = data.summary.match(/Nombre:\s*(.*?)\n/);
-                        if (nameMatch) nameDisplay = nameMatch[1];
-                    }
+            const renderRow = (data) => {
+                const date = data.updatedAt ? new Date(data.updatedAt).toLocaleString('es-ES', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' }) : 'Hoy';
+                const statusColor = data.status === '🔥 CALIENTE' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-gray-100 text-gray-500 border-gray-200';
+                let nameDisplay = "Prospecto Nuevo";
+                if (data.summary && data.summary.includes("Nombre:")) {
+                    const nameMatch = data.summary.match(/Nombre:\s*(.*?)\n/);
+                    if (nameMatch) nameDisplay = nameMatch[1];
+                }
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50 transition-colors border-b border-gray-100">
+                        <td class="p-4 text-sm text-gray-500 font-medium">${date}</td>
+                        <td class="p-4"><span class="px-2 py-1 text-[10px] uppercase font-bold rounded-full border ${statusColor}">${data.status || 'Activo'}</span></td>
+                        <td class="p-4 text-sm text-gray-800 font-semibold">${nameDisplay}</td>
+                        <td class="p-4 text-right">
+                            <button onclick="openDetailModal('${data.id}')" class="bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm">Ver Ficha</button>
+                        </td>
+                    </tr>`;
+            };
 
-                    tbody.innerHTML += `
-                        <tr class="hover:bg-gray-50 transition-colors border-b border-gray-100">
-                            <td class="p-4 text-sm text-gray-500 font-medium">${date}</td>
-                            <td class="p-4"><span class="px-2 py-1 text-[10px] uppercase font-bold rounded-full border ${statusColor}">${data.status || 'Activo'}</span></td>
-                            <td class="p-4 text-sm text-gray-800 font-semibold">${nameDisplay}</td>
-                            <td class="p-4 text-right">
-                                <button onclick="openDetailModal('${data.id}')" class="bg-white border border-gray-200 hover:border-blue-300 hover:text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm">Ver Ficha</button>
-                            </td>
-                        </tr>`;
+            if (useLocalStorage) {
+                const leads = getLocalLeads();
+                if (leads.length === 0) tbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-gray-400">Sin leads locales.</td></tr>';
+                else leads.forEach(renderRow);
+            } else {
+                const leadsRef = collection(db, 'artifacts', appId, 'public', 'data', 'leads');
+                onSnapshot(leadsRef, (snapshot) => {
+                    tbody.innerHTML = '';
+                    let leads = [];
+                    snapshot.forEach(doc => leads.push({ id: doc.id, ...doc.data() }));
+                    leads.sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0));
+                    leads.forEach(renderRow);
                 });
-            });
+            }
         }
 
         // --- AUTO-RESUMEN INTELIGENTE ---
         async function generateAndSaveSummary() {
-            // PROMPT ESPECIAL PARA RESUMEN ESTRUCTURADO
             const summaryPrompt = `
             Analiza la conversación y extrae los SIGUIENTES PUNTOS CLAVES en formato de lista simple (sin markdown):
             - Nombre:
@@ -324,8 +357,12 @@
                 const data = await response.json();
                 const summaryText = data.candidates[0].content.parts[0].text;
                 
-                const leadRef = doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId);
-                await updateDoc(leadRef, { summary: summaryText });
+                if (useLocalStorage) {
+                    saveLocalLead({ summary: summaryText });
+                } else {
+                    const leadRef = doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId);
+                    await updateDoc(leadRef, { summary: summaryText });
+                }
             } catch (e) { console.error("Error resumiendo:", e); }
         }
 
@@ -347,15 +384,19 @@
         `;
 
         async function saveMessage(text, role, statusOverride = null) {
-            if (!currentUser) return;
-            const leadRef = doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId);
             const updateData = { 
                 lastMessage: text, 
-                updatedAt: serverTimestamp(), 
                 [`history.${Date.now()}`]: { role, text } 
             };
             if (statusOverride) updateData.status = statusOverride;
-            await updateDoc(leadRef, updateData);
+
+            if (useLocalStorage) {
+                saveLocalLead(updateData);
+            } else if (currentUser) {
+                const leadRef = doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId);
+                updateData.updatedAt = serverTimestamp();
+                await updateDoc(leadRef, updateData);
+            }
         }
 
         function appendMessage(role, text) {
@@ -372,7 +413,7 @@
             if (isClosing) {
                 addWSBtn();
                 saveMessage(cleanText, role, '🔥 CALIENTE'); 
-                generateAndSaveSummary(); // DISPARAR EL ANÁLISIS
+                generateAndSaveSummary(); 
             } else {
                 saveMessage(cleanText, role);
             }
@@ -406,7 +447,7 @@
 
         async function sendMessage(manualText = null) {
             const text = manualText || document.getElementById('user-input').value.trim();
-            if (!text || !currentUser) return;
+            if (!text || (!useLocalStorage && !currentUser)) return;
 
             appendMessage('user', text);
             document.getElementById('user-input').value = '';
