@@ -7,55 +7,27 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* --- ESTILOS VISUALES (Apple Style) --- */
         body { font-family: 'Inter', sans-serif; background-color: #f2f2f7; color: #1d1d1f; -webkit-tap-highlight-color: transparent; }
         .chat-container { height: 72vh; scroll-behavior: smooth; }
-        
-        .bubble { 
-            max-width: 85%; padding: 14px 18px; border-radius: 22px; margin-bottom: 12px; 
-            font-size: 15px; line-height: 1.5; box-shadow: 0 2px 5px rgba(0,0,0,0.03); 
-            animation: slideIn 0.3s cubic-bezier(0.1, 0.9, 0.2, 1); 
-        }
+        .bubble { max-width: 85%; padding: 14px 18px; border-radius: 22px; margin-bottom: 12px; font-size: 15px; line-height: 1.5; box-shadow: 0 2px 5px rgba(0,0,0,0.03); animation: slideIn 0.3s ease; }
         @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
         .lucia { background: #ffffff; color: #1d1d1f; align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid rgba(0,0,0,0.05); }
         .user { background: #007AFF; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
-
-        /* Animación de carga */
         .typing-dot { width: 6px; height: 6px; background: #8e8e93; border-radius: 50%; animation: typing 1.4s infinite ease-in-out both; }
         .typing-dot:nth-child(1) { animation-delay: -0.32s; }
         .typing-dot:nth-child(2) { animation-delay: -0.16s; }
         @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
-
-        /* Scrollbar oculta */
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        /* Componentes UI */
-        .ws-button { 
-            background: #34C759; color: white; padding: 16px; border-radius: 20px; font-weight: 700; 
-            display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 15px; 
-            box-shadow: 0 8px 20px rgba(52, 199, 89, 0.25); cursor: pointer; transition: transform 0.2s; 
-        }
+        .ws-button { background: #34C759; color: white; padding: 16px; border-radius: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 15px; box-shadow: 0 8px 20px rgba(52, 199, 89, 0.25); cursor: pointer; transition: transform 0.2s; }
         .ws-button:active { transform: scale(0.96); }
-        
-        .quick-btn { 
-            border: 1px solid #007AFF; color: #007AFF; background: rgba(255,255,255,0.95); 
-            padding: 9px 18px; border-radius: 25px; font-size: 14px; font-weight: 600; 
-            margin-right: 6px; margin-top: 8px; cursor: pointer; transition: all 0.2s; 
-            backdrop-filter: blur(4px);
-        }
+        .quick-btn { border: 1px solid #007AFF; color: #007AFF; background: rgba(255,255,255,0.95); padding: 9px 18px; border-radius: 25px; font-size: 14px; font-weight: 600; margin-right: 6px; margin-top: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px); }
         .quick-btn:active { background: #007AFF; color: white; transform: scale(0.95); }
-        
         .view-hidden { display: none !important; }
         .admin-trigger { cursor: pointer; padding: 15px; opacity: 0.3; transition: opacity 0.3s; }
         .admin-trigger:hover { opacity: 1; }
-
-        /* Modal CRM */
         .crm-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 60; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
         .crm-modal.active { opacity: 1; pointer-events: auto; }
         .crm-card { background: white; width: 95%; max-width: 600px; max-height: 85vh; border-radius: 32px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-        .crm-modal.active .crm-card { transform: scale(1); }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen">
@@ -90,68 +62,71 @@
         <div class="p-5 bg-white/80 backdrop-blur-xl border-t border-gray-200/50">
             <div class="flex items-center gap-2">
                 <div class="flex-grow bg-gray-100/80 rounded-full border border-transparent focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                    <input id="user-input" type="text" placeholder="Escriba su mensaje aquí..." class="w-full bg-transparent px-5 py-3 outline-none text-[16px] text-gray-800 placeholder-gray-400">
+                    <input id="user-input" type="text" placeholder="Escribe su mensaje aquí..." class="w-full bg-transparent px-5 py-3 outline-none text-[16px] text-gray-800 placeholder-gray-400">
                 </div>
                 <button id="send-btn" class="bg-[#007AFF] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 pl-0.5"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>
                 </button>
             </div>
             <p class="text-center text-[10px] text-gray-400 mt-3 font-medium select-none">
-                <span class="admin-trigger" onclick="openPinModal()">SmartLeads</span> • Conexión Segura
+                <span class="admin-trigger" onclick="openLoginModal()">SmartLeads</span> • Conexión Segura
             </p>
         </div>
     </div>
 
-    <!-- MODAL PIN -->
-    <div id="pin-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <!-- MODAL LOGIN (BLINDADO) -->
+    <div id="login-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-[32px] shadow-2xl p-8 w-full max-w-xs transform transition-all">
             <div class="text-center mb-6">
-                <h3 class="text-xl font-black text-gray-900">Control Jorge</h3>
-                <p class="text-sm text-gray-500">Ingrese PIN (123456)</p>
+                <div class="mx-auto w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center mb-4 text-blue-600 font-bold text-xl tracking-tighter">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                </div>
+                <h3 class="text-xl font-black text-gray-900">Acceso Admin</h3>
+                <p class="text-sm text-gray-500">Credenciales Encriptadas</p>
             </div>
-            <input type="password" id="pin-input" maxlength="6" class="w-full text-center text-3xl tracking-[0.4em] font-black border-b-2 border-gray-100 py-2 mb-8 focus:border-blue-500 outline-none bg-transparent" placeholder="••••••">
+            
+            <input type="email" id="admin-email" class="w-full border-b-2 border-gray-100 py-3 px-2 mb-3 focus:border-blue-500 outline-none text-gray-700 bg-transparent" placeholder="Correo Admin">
+            <input type="password" id="admin-pass" class="w-full border-b-2 border-gray-100 py-3 px-2 mb-6 focus:border-blue-500 outline-none text-gray-700 bg-transparent" placeholder="Contraseña">
+            
             <div class="grid grid-cols-2 gap-4">
-                <button onclick="closePinModal()" class="py-3 rounded-2xl bg-gray-100 text-gray-600 font-bold active:scale-95 transition-transform">Cancelar</button>
-                <button onclick="verifyPin()" class="py-3 rounded-2xl bg-blue-600 text-white font-bold shadow-lg active:scale-95 transition-transform">Entrar</button>
+                <button onclick="closeLoginModal()" class="py-3 rounded-2xl bg-gray-100 text-gray-600 font-bold active:scale-95 transition-transform">Cancelar</button>
+                <button onclick="performLogin()" class="py-3 rounded-2xl bg-blue-600 text-white font-bold shadow-lg active:scale-95 transition-transform">Entrar</button>
             </div>
+            <p id="login-error" class="text-center text-xs text-red-500 mt-4 hidden font-bold"></p>
         </div>
     </div>
 
     <!-- PANEL ADMIN -->
     <div id="admin-view" class="w-full max-w-6xl bg-white shadow-2xl min-h-[92vh] flex-col overflow-hidden rounded-[40px] border border-gray-200 view-hidden">
         <div class="bg-slate-900 p-6 text-white flex flex-wrap justify-between items-center gap-4">
+            <h1 class="text-2xl font-black tracking-tight">SmartLeads CRM</h1>
             <div class="flex items-center gap-3">
-                <h1 class="text-2xl font-black tracking-tight">SmartLeads</h1>
-                <span class="bg-green-500/20 text-green-400 text-[10px] font-bold px-2 py-1 rounded-md border border-green-500/30">ONLINE</span>
-            </div>
-            <div class="flex items-center gap-3">
-                <button onclick="showAdminTab('leads')" id="tab-leads" class="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg transition-all">Leads</button>
-                <button onclick="showAdminTab('training')" id="tab-training" class="bg-slate-700 hover:bg-slate-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all">Entrenar</button>
-                <button onclick="switchView('client')" class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-sm font-bold ml-2 transition-all">Salir</button>
+                <button onclick="showAdminTab('leads')" id="tab-leads" class="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg">Leads</button>
+                <button onclick="showAdminTab('training')" id="tab-training" class="bg-slate-700 hover:bg-slate-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold">Entrenar IA</button>
+                <button onclick="logoutAdmin()" class="bg-red-500/10 text-red-400 hover:bg-red-500/20 px-4 py-2 rounded-xl text-sm font-bold ml-4">Cerrar Sesión</button>
             </div>
         </div>
         <div id="section-leads" class="flex-grow p-0 overflow-y-auto max-h-[80vh]">
             <table class="w-full text-left border-collapse">
                 <thead class="bg-gray-50 sticky top-0 z-10">
                     <tr class="text-gray-400 border-b border-gray-100 text-[11px] uppercase font-black tracking-widest">
-                        <th class="p-5">Fecha</th>
-                        <th class="p-5">Estado</th>
+                        <th class="p-5 w-40">Fecha</th>
+                        <th class="p-5 w-32">Estado</th>
                         <th class="p-5">Prospecto</th>
-                        <th class="p-5 text-right">Acción</th>
+                        <th class="p-5 text-right">Ficha</th>
                     </tr>
                 </thead>
                 <tbody id="leads-table-body" class="divide-y divide-gray-50"></tbody>
             </table>
         </div>
         <div id="section-training" class="flex-grow p-10 bg-gray-50 overflow-y-auto hidden">
-            <div class="max-w-4xl mx-auto bg-white p-8 rounded-[35px] border border-gray-100 shadow-sm">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-black text-gray-900">Instrucciones de Lucía</h2>
-                    <button onclick="restoreDefaultPrompt()" class="text-xs font-bold text-blue-500 hover:underline">Restaurar</button>
-                </div>
-                <textarea id="prompt-editor" class="w-full h-80 p-6 border-2 border-gray-100 rounded-[25px] font-sans text-[15px] leading-relaxed bg-slate-50 focus:bg-white focus:border-blue-500 outline-none transition-all shadow-inner"></textarea>
-                <div class="mt-6 flex justify-end">
-                    <button onclick="savePrompt()" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-2xl font-bold shadow-lg active:scale-95 transition-transform">Guardar Cambios</button>
+            <div class="max-w-4xl mx-auto">
+                <div class="bg-white p-8 rounded-[35px] border border-gray-100 shadow-sm">
+                    <h2 class="text-2xl font-black text-gray-900 mb-6">Guion de Lucía</h2>
+                    <textarea id="prompt-editor" class="w-full h-80 p-6 border-2 border-gray-100 rounded-[25px] font-sans text-[16px] leading-relaxed bg-slate-50 focus:bg-white outline-none shadow-inner"></textarea>
+                    <div class="mt-8 flex justify-end">
+                        <button onclick="savePrompt()" class="bg-purple-600 hover:bg-purple-700 text-white px-10 py-4 rounded-2xl font-black shadow-xl transition-transform active:scale-95">Guardar Entrenamiento</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -161,34 +136,30 @@
     <div id="lead-detail-modal" class="crm-modal">
         <div class="crm-card">
             <div class="bg-slate-50 p-6 border-b border-gray-100 flex justify-between items-center">
-                <h3 class="text-lg font-black text-gray-900">Ficha del Prospecto</h3>
+                <h3 class="text-xl font-black text-gray-900">Resumen del Lead</h3>
                 <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600 bg-white p-2 rounded-full shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></button>
             </div>
             <div class="p-8 bg-white flex-grow overflow-y-auto">
-                <div id="detail-summary" class="text-[16px] text-slate-800 bg-blue-50/50 p-6 rounded-[25px] border border-blue-100 leading-relaxed font-medium whitespace-pre-line shadow-sm">Cargando análisis...</div>
-                <div class="mt-6">
-                    <button onclick="toggleHistory()" class="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 hover:text-blue-500">Ver Chat Completo &darr;</button>
-                    <div id="detail-history" class="hidden mt-4 space-y-2 pl-4 border-l-2 border-gray-100 max-h-[200px] overflow-y-auto text-xs text-gray-500"></div>
-                </div>
+                <div id="detail-summary" class="text-[17px] text-slate-800 bg-blue-50/50 p-8 rounded-[30px] border border-blue-100 leading-relaxed font-medium">Cargando...</div>
+                <div class="mt-6"><div id="detail-history" class="space-y-2 text-xs text-gray-400 italic"></div></div>
             </div>
-            <div class="p-6 border-t bg-gray-50"><button onclick="window.open(`tel:${JORGE_PHONE}`)" class="w-full bg-green-600 text-white py-4 rounded-[20px] font-bold shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2">📞 Llamar Ahora</button></div>
+            <div class="p-6 border-t bg-gray-50"><button onclick="window.open(`tel:${JORGE_PHONE}`)" class="w-full bg-green-600 text-white py-5 rounded-[22px] font-bold shadow-xl">Llamar al Prospecto</button></div>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, updateDoc, serverTimestamp, collection, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- CONFIGURACIÓN ---
-        const P1 = "AIzaSyCPDuual8XBejuV"; const P2 = "UPbKecfonbIh6SNolDk"; // Tu API Key Dividida
+        const P1 = "AIzaSyCPDuual8XBejuV"; const P2 = "UPbKecfonbIh6SNolDk";
         const API_KEY = P1 + P2;
         const JORGE_PHONE = "14079553077";
         const isInCanvas = typeof __firebase_config !== 'undefined';
         const MODEL_NAME = isInCanvas ? "gemini-2.5-flash-preview-09-2025" : "gemini-1.5-flash";
         const sessionId = crypto.randomUUID();
 
-        // --- TU FIREBASE REAL ---
+        // TU FIREBASE REAL (LuciaAI)
         const myFirebaseConfig = {
             apiKey: "AIzaSyA_-x6UEEVEJ7uAY8ohCrDussZ938QQ0B0",
             authDomain: "luciaai-46c75.firebaseapp.com",
@@ -199,22 +170,16 @@
             measurementId: "G-KRMZBRX3JQ"
         };
 
-        // --- VARIABLES DE ESTADO ---
         let chatHistory = []; let currentUser = null; let stepCount = 0;
         let db, app, auth, appId; let useLocalStorage = false;
 
-        const DEFAULT_PROMPT = `Eres Lucía, Asistente Inteligente del Portal de Beneficios.
-OBJETIVO: Calificar prospectos cálidamente y conectar con Jorge Guevara.
-FLUJO: 1. Nombre. 2. Tratamiento (Sr/Sra). 3. Dolor (Deudas/Funeral). 4. Filtro Salud (Hospital). 5. Salud General. 6. Presupuesto (Walmart). 7. Cierre.
-Reglas: No precios fijos. Usa **negritas**. Finaliza con [CONECTAR_JORGE].`;
+        const DEFAULT_PROMPT = `Eres Lucía, asistente de beneficios. Objetivo: calificar y conectar.`;
         let currentSystemPrompt = DEFAULT_PROMPT;
 
-        // --- INICIALIZACIÓN ROBUSTA ---
         try {
             if (myFirebaseConfig.apiKey) {
                 app = initializeApp(myFirebaseConfig); appId = 'smartleads-prod'; 
                 auth = getAuth(app); db = getFirestore(app);
-                console.log("✅ Conectado a LuciaAI");
             } else if (isInCanvas) {
                 app = initializeApp(JSON.parse(__firebase_config)); appId = 'smartleads-app';
                 auth = getAuth(app); db = getFirestore(app);
@@ -224,118 +189,156 @@ Reglas: No precios fijos. Usa **negritas**. Finaliza con [CONECTAR_JORGE].`;
         function setupLocalMode() {
             useLocalStorage = true; currentUser = { uid: 'local' };
             const dot = document.getElementById('db-status-dot');
-            if(dot) dot.classList.replace('bg-green-500', 'bg-yellow-500');
-            saveLocalLead({ startedAt: new Date().toISOString(), lastMessage: 'Sesión Local', status: 'Navegando', summary: 'Pendiente...' });
+            if(dot) dot.classList.replace('bg-green-500', 'bg-red-500');
+            saveLocalLead({ startedAt: new Date().toISOString(), lastMessage: 'Modo Local', status: 'Navegando', summary: 'Pendiente...' });
             loadSettings();
         }
 
         const initAuth = async () => {
-            if (useLocalStorage) return;
+            if (useLocalStorage) { currentUser = { uid: 'local' }; loadSettings(); return; }
             try {
                 if (isInCanvas && !myFirebaseConfig.apiKey) await signInWithCustomToken(auth, __initial_auth_token);
                 else await signInAnonymously(auth);
-            } catch (e) { console.warn("Auth falló, modo local."); setupLocalMode(); }
+            } catch (error) { 
+                console.warn("Auth Anónimo falló.");
+                setupLocalMode();
+            }
         };
 
         if (!useLocalStorage) {
             onAuthStateChanged(auth, (user) => {
                 if (user) {
-                    currentUser = user; loadSettings();
-                    setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), { startedAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: 'Chat iniciado', status: 'Navegando', summary: '...' }, { merge: true });
+                    currentUser = user; 
+                    if (user.isAnonymous) {
+                        loadSettings();
+                        setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), { startedAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: 'Sesión iniciada', status: 'Navegando', summary: 'Pendiente...' }, { merge: true });
+                    }
                 } else initAuth();
             });
-        } else initAuth();
+        } else { initAuth(); }
 
-        // --- UTILS ---
-        function saveLocalLead(data) {
-            const leads = JSON.parse(localStorage.getItem('sl_leads') || '{}');
-            leads[sessionId] = { ...leads[sessionId], ...data, id: sessionId, updatedAt: new Date().toISOString() };
-            localStorage.setItem('sl_leads', JSON.stringify(leads));
-        }
-        function getLocalLeads() { return Object.values(JSON.parse(localStorage.getItem('sl_leads') || '{}')).sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt)); }
+        // --- AUTH ADMIN REAL ---
+        window.openLoginModal = () => {
+            // Si ya está logueado como admin (no anónimo), pasa directo
+            if (currentUser && !currentUser.isAnonymous) { switchView('admin'); return; }
+            document.getElementById('login-modal').classList.remove('hidden'); 
+        };
+        window.closeLoginModal = () => document.getElementById('login-modal').classList.add('hidden');
+        
+        window.performLogin = async () => {
+            const email = document.getElementById('admin-email').value;
+            const pass = document.getElementById('admin-pass').value;
+            const errorMsg = document.getElementById('login-error');
+            
+            if(useLocalStorage) {
+                // Simulación para modo local
+                if(pass === "123456") { closeLoginModal(); switchView('admin'); } 
+                else { errorMsg.innerText = "Modo Local: Usa 123456"; errorMsg.classList.remove('hidden'); }
+                return;
+            }
 
-        // --- SETTINGS ---
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
+                closeLoginModal();
+                switchView('admin');
+            } catch (error) {
+                errorMsg.innerText = "Error: Verifica tu correo/contraseña en Firebase.";
+                errorMsg.classList.remove('hidden');
+            }
+        };
+
+        window.logoutAdmin = async () => {
+            await signOut(auth);
+            await signInAnonymously(auth); // Volver a modo cliente
+            switchView('client');
+        };
+
+        // --- CRM ---
         async function loadSettings() {
-            if (useLocalStorage) currentSystemPrompt = localStorage.getItem('lucia_prompt') || DEFAULT_PROMPT;
+            if (useLocalStorage) { currentSystemPrompt = localStorage.getItem('lucia_prompt') || DEFAULT_PROMPT; }
             else {
-                try { const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config')); if (snap.exists()) currentSystemPrompt = snap.data().prompt; } catch (e) {}
+                try {
+                    const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'));
+                    if (snap.exists() && snap.data().prompt) currentSystemPrompt = snap.data().prompt;
+                } catch (e) {}
             }
             document.getElementById('prompt-editor').value = currentSystemPrompt;
         }
-        window.savePrompt = async () => {
-            const val = document.getElementById('prompt-editor').value; currentSystemPrompt = val;
-            if(useLocalStorage) localStorage.setItem('lucia_prompt', val);
-            else await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { prompt: val }, { merge: true });
-            alert("✅ Guardado.");
-        };
-        window.restoreDefaultPrompt = () => document.getElementById('prompt-editor').value = DEFAULT_PROMPT;
 
-        // --- UI ---
-        window.openPinModal = () => { document.getElementById('pin-modal').classList.remove('hidden'); document.getElementById('pin-input').focus(); };
-        window.closePinModal = () => document.getElementById('pin-modal').classList.add('hidden');
-        window.verifyPin = () => { if (document.getElementById('pin-input').value === "123456") { closePinModal(); switchView('admin'); } else alert("Error"); };
+        window.savePrompt = async () => {
+            const val = document.getElementById('prompt-editor').value;
+            currentSystemPrompt = val;
+            if (useLocalStorage) localStorage.setItem('lucia_prompt', val);
+            else await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { prompt: val }, { merge: true });
+            alert("✅ Cerebro actualizado.");
+        };
+
         window.switchView = (v) => {
             document.getElementById('admin-view').classList.toggle('view-hidden', v !== 'admin');
             document.getElementById('client-view').classList.toggle('view-hidden', v === 'admin');
             if(v === 'admin') { document.getElementById('admin-view').classList.add('flex'); loadLeads(); }
         };
+
         window.showAdminTab = (t) => {
             document.getElementById('section-leads').classList.toggle('hidden', t !== 'leads');
             document.getElementById('section-training').classList.toggle('hidden', t !== 'training');
-            document.getElementById('tab-leads').classList.toggle('bg-blue-600', t === 'leads');
-            document.getElementById('tab-leads').classList.toggle('bg-slate-700', t !== 'leads');
-            document.getElementById('tab-training').classList.toggle('bg-blue-600', t === 'training');
-            document.getElementById('tab-training').classList.toggle('bg-slate-700', t !== 'training');
         };
-        window.toggleHistory = () => document.getElementById('detail-history').classList.toggle('hidden');
+
         window.openDetailModal = async (id) => {
             document.getElementById('lead-detail-modal').classList.add('active');
             let data;
-            if(useLocalStorage) data = JSON.parse(localStorage.getItem('sl_leads')||'{}')[id];
-            else { const s = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', id)); if(s.exists()) data = s.data(); }
-            if(data) {
+            if (useLocalStorage) data = JSON.parse(localStorage.getItem('sl_leads_data') || '{}')[id];
+            else { const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', id)); if(snap.exists()) data = snap.data(); }
+            if (data) {
                 document.getElementById('detail-summary').innerText = data.summary || "Generando...";
-                document.getElementById('detail-history').innerHTML = Object.values(data.history||{}).sort((a,b)=>a.ts-b.ts).map(m=>`<div><b>${m.role}:</b> ${m.text}</div>`).join('');
+                document.getElementById('detail-history').innerHTML = Object.values(data.history || {}).sort((a,b)=>a.ts-b.ts).map(m => `<div>${m.role}: ${m.text}</div>`).join('');
             }
         };
         window.closeDetailModal = () => document.getElementById('lead-detail-modal').classList.remove('active');
 
         function loadLeads() {
+            const tbody = document.getElementById('leads-table-body');
             const render = (leads) => {
-                document.getElementById('leads-table-body').innerHTML = leads.map(l => {
-                    const d = new Date(l.updatedAt?.seconds*1000 || l.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                    const name = l.summary?.split("Nombre:")[1]?.split("\n")[0] || "Prospecto";
-                    const isHot = l.status === '🔥 CALIENTE';
-                    return `<tr class="border-b border-gray-100 hover:bg-gray-50"><td class="p-5 font-mono text-[10px] text-gray-400">${d}</td><td class="p-5"><span class="px-2 py-1 rounded text-[10px] font-bold ${isHot ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-500'}">${l.status}</span></td><td class="p-5 font-bold text-sm text-gray-800">${name}</td><td class="p-5 text-right"><button onclick="openDetailModal('${l.id}')" class="text-blue-600 font-bold text-xs">Ver</button></td></tr>`;
+                tbody.innerHTML = leads.map(l => {
+                    const ts = l.updatedAt?.seconds * 1000 || l.updatedAt;
+                    const date = new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                    let name = l.summary?.split("Nombre:")[1]?.split("\n")[0] || "Prospecto";
+                    return `<tr class="border-b border-gray-50"><td class="p-5 font-mono text-[10px]">${date}</td><td class="p-5 font-bold text-[10px]">${l.status}</td><td class="p-5 font-bold">${name}</td><td class="p-5 text-right"><button onclick="openDetailModal('${l.id}')" class="text-blue-600 font-black">Ver</button></td></tr>`;
                 }).join('');
             };
-            if(useLocalStorage) render(getLocalLeads());
-            else onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'leads'), s => {
-                let d = []; s.forEach(x => d.push({id:x.id, ...x.data()}));
-                render(d.sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0)));
+            if (useLocalStorage) render(getLocalLeads());
+            else onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'leads'), snap => {
+                let data = []; snap.forEach(d => data.push({id:d.id, ...d.data()}));
+                render(data.sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0)));
             });
         }
 
         async function save(txt, role, status = null) {
-            const d = { lastMessage: txt, [`history.${Date.now()}`]: { role, text: txt, ts: Date.now() }, updatedAt: useLocalStorage ? new Date().toISOString() : serverTimestamp() };
-            if(status) d.status = status;
-            if(useLocalStorage) saveLocalLead(d);
-            else if(currentUser) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), d);
+            const data = { lastMessage: txt, [`history.${Date.now()}`]: { role, text: txt, ts: Date.now() }, updatedAt: useLocalStorage ? Date.now() : serverTimestamp() };
+            if(status) data.status = status;
+            if(useLocalStorage) { saveLocalLead(data); }
+            else if (currentUser) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), data);
         }
 
         async function analyzeLead() {
             const models = ["gemini-2.5-flash-preview-09-2025", "gemini-1.5-flash"];
-            const p = "Analiza el chat y resume: Nombre, Dolor, Salud, Presupuesto.";
-            for (const m of models) {
+            const prompt = "Analiza el chat y resume en 3 lineas: Nombre, Dolor, Salud y Presupuesto.";
+            for (const model of models) {
                 try {
-                    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${API_KEY}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ contents: [...chatHistory, { role: "user", parts: [{ text: p }] }] }) });
-                    if(!r.ok) continue;
-                    const d = await r.json();
-                    const s = d.candidates[0].content.parts[0].text;
-                    if(useLocalStorage) saveLocalLead({summary: s});
-                    else await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), {summary: s});
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [...chatHistory, { role: "user", parts: [{ text: prompt }] }] })
+                    });
+                    if (!res.ok) continue;
+                    const data = await res.json();
+                    const summary = data.candidates[0].content.parts[0].text;
+                    if (useLocalStorage) { 
+                        saveLocalLead({ summary });
+                    } else {
+                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), { summary });
+                    }
                     break;
-                } catch(e){}
+                } catch (e) {}
             }
         }
 
@@ -356,22 +359,25 @@ Reglas: No precios fijos. Usa **negritas**. Finaliza con [CONECTAR_JORGE].`;
 
         async function sendMessage(manualText = null) {
             const text = manualText || document.getElementById('user-input').value.trim();
-            if (!text) return;
+            if (!text || (!useLocalStorage && !currentUser)) return;
             append('user', text); document.getElementById('user-input').value = '';
             document.getElementById('loading').classList.remove('hidden');
             stepCount++; chatHistory.push({ role: "user", parts: [{ text }] });
             
             const models = ["gemini-2.5-flash-preview-09-2025", "gemini-1.5-flash"];
             let success = false;
-            for (const m of models) {
+            for (const model of models) {
                 try {
-                    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${API_KEY}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ contents: chatHistory, systemInstruction: { parts: [{ text: currentSystemPrompt }] } }) });
-                    if(!r.ok) continue;
-                    const d = await r.json();
-                    const t = d.candidates[0].content.parts[0].text;
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: chatHistory, systemInstruction: { parts: [{ text: currentSystemPrompt }] } })
+                    });
+                    if (!res.ok) continue;
+                    const data = await res.json();
+                    const aiTxt = data.candidates[0].content.parts[0].text;
                     document.getElementById('loading').classList.add('hidden');
-                    append('lucia', t); chatHistory.push({ role: "model", parts: [{ text: t }] });
-                    if(stepCount === 1) {
+                    append('lucia', aiTxt); chatHistory.push({ role: "model", parts: [{ text: aiTxt }] });
+                    if (stepCount === 1) { 
                         const c = document.createElement('div'); c.className = "flex flex-wrap mt-1 mb-6";
                         ['Señor', 'Señora', 'Srta'].forEach(val => {
                             const b = document.createElement('button'); b.className = "quick-btn"; b.innerText = val;
@@ -380,10 +386,10 @@ Reglas: No precios fijos. Usa **negritas**. Finaliza con [CONECTAR_JORGE].`;
                         });
                         document.getElementById('chat-box').appendChild(c);
                     }
-                    success = true; break;
-                } catch(e){}
+                    success = true; break; 
+                } catch (e) {}
             }
-            if(!success) { document.getElementById('loading').classList.add('hidden'); append('lucia', "Error técnico."); }
+            if (!success) { document.getElementById('loading').classList.add('hidden'); append('lucia', "Hipo técnico. Inténtalo de nuevo."); }
         }
 
         document.getElementById('send-btn').addEventListener('click', () => sendMessage());
