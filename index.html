@@ -15,7 +15,7 @@
             height: 100%; 
             overflow-y: auto; 
             scroll-behavior: smooth; 
-            -webkit-overflow-scrolling: touch; /* Suavidad en iOS */
+            -webkit-overflow-scrolling: touch; 
         }
         
         .bubble { 
@@ -54,18 +54,16 @@
         .quick-btn:active { background: #007AFF; color: white; transform: scale(0.95); }
         
         .view-hidden { display: none !important; }
-        .admin-trigger { cursor: pointer; padding: 20px; opacity: 0.1; } /* Casi invisible */
+        .admin-trigger { cursor: pointer; padding: 20px; opacity: 0.1; } 
         .admin-trigger:active { opacity: 0.5; }
 
         /* Modal y Card */
         .app-card {
             width: 100%; max-width: 450px; background: #fbfbfd; 
-            height: 100vh; /* Móvil completo */
-            max-height: 100vh;
+            height: 100vh; max-height: 100vh;
             display: flex; flex-direction: column; overflow: hidden; position: relative;
         }
         
-        /* En escritorio se ve como un iPhone flotante */
         @media (min-width: 768px) {
             .app-card {
                 height: 85vh; max-height: 800px;
@@ -204,9 +202,11 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, updateDoc, serverTimestamp, collection, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // CLAVES
-        const P1 = "AIzaSyCPDuual8XBejuV"; const P2 = "UPbKecfonbIh6SNolDk";
+        // CLAVES (RESTAURADA LA LLAVE BUENA)
+        const P1 = "AIzaSyCjhXpHtovaqye6"; 
+        const P2 = "O4r2ir2tT5lksOIrNfs";
         const API_KEY = P1 + P2;
+        
         const JORGE_PHONE = "14079553077";
         const isInCanvas = typeof __firebase_config !== 'undefined';
         const MODEL_NAME = isInCanvas ? "gemini-2.5-flash-preview-09-2025" : "gemini-1.5-flash";
@@ -232,6 +232,7 @@
             if (myFirebaseConfig.apiKey) {
                 app = initializeApp(myFirebaseConfig); appId = 'smartleads-prod'; 
                 auth = getAuth(app); db = getFirestore(app);
+                console.log("✅ Conectado a LuciaAI");
             } else if (isInCanvas) {
                 app = initializeApp(JSON.parse(__firebase_config)); appId = 'smartleads-app';
                 auth = getAuth(app); db = getFirestore(app);
@@ -251,7 +252,10 @@
             try {
                 if (isInCanvas && !myFirebaseConfig.apiKey) await signInWithCustomToken(auth, __initial_auth_token);
                 else await signInAnonymously(auth);
-            } catch (error) { setupLocalMode(); }
+            } catch (error) { 
+                console.warn("Auth Anónimo falló. Activando respaldo local.");
+                setupLocalMode();
+            }
         };
 
         if (!useLocalStorage) {
@@ -260,48 +264,90 @@
                     currentUser = user; 
                     if (user.isAnonymous) {
                         loadSettings();
-                        try { setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), { startedAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: 'Sesión iniciada', status: 'Navegando', summary: '...' }, { merge: true }); } catch(e){setupLocalMode();}
+                        try { setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), { startedAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: 'Sesión iniciada', status: 'Navegando', summary: 'Pendiente...' }, { merge: true }); } catch(e){setupLocalMode();}
                     }
                 } else initAuth();
             });
         } else { initAuth(); }
 
-        window.openLoginModal = () => { if (currentUser && !currentUser.isAnonymous) { switchView('admin'); return; } document.getElementById('login-modal').classList.remove('hidden'); };
+        window.openLoginModal = () => {
+            if (currentUser && !currentUser.isAnonymous) { switchView('admin'); return; }
+            document.getElementById('login-modal').classList.remove('hidden'); 
+        };
         window.closeLoginModal = () => document.getElementById('login-modal').classList.add('hidden');
+        
         window.performLogin = async () => {
             const email = document.getElementById('admin-email').value; const pass = document.getElementById('admin-pass').value;
-            if(useLocalStorage) { if(pass==="123456"){closeLoginModal(); switchView('admin');} else alert("Modo Local: 123456"); return; }
-            try { await signInWithEmailAndPassword(auth, email, pass); closeLoginModal(); switchView('admin'); } catch (error) { document.getElementById('login-error').innerText = "Credenciales incorrectas"; document.getElementById('login-error').classList.remove('hidden'); }
+            const errorMsg = document.getElementById('login-error');
+            
+            if(useLocalStorage) {
+                if(pass === "123456") { closeLoginModal(); switchView('admin'); } 
+                else { errorMsg.innerText = "Modo Local: Usa 123456"; errorMsg.classList.remove('hidden'); }
+                return;
+            }
+
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
+                closeLoginModal();
+                switchView('admin');
+            } catch (error) {
+                errorMsg.innerText = "Error: Verifica tu correo o contraseña.";
+                errorMsg.classList.remove('hidden');
+            }
         };
-        window.logoutAdmin = async () => { await signOut(auth); await signInAnonymously(auth); switchView('client'); };
+
+        window.logoutAdmin = async () => {
+            await signOut(auth);
+            await signInAnonymously(auth);
+            switchView('client');
+        };
 
         async function loadSettings() {
             if (useLocalStorage) { currentSystemPrompt = localStorage.getItem('lucia_prompt') || DEFAULT_PROMPT; }
-            else { try { const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config')); if (snap.exists()) currentSystemPrompt = snap.data().prompt; } catch (e) {} }
+            else {
+                try {
+                    const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'));
+                    if (snap.exists() && snap.data().prompt) currentSystemPrompt = snap.data().prompt;
+                } catch (e) {}
+            }
             document.getElementById('prompt-editor').value = currentSystemPrompt;
         }
 
         window.savePrompt = async () => {
-            const val = document.getElementById('prompt-editor').value; currentSystemPrompt = val;
+            const val = document.getElementById('prompt-editor').value;
+            currentSystemPrompt = val;
             if (useLocalStorage) localStorage.setItem('lucia_prompt', val);
-            else { try { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { prompt: val }, { merge: true }); alert("✅ Guardado"); } catch (e) { alert("⚠️ Error: Solo Admin."); } }
+            else {
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { prompt: val }, { merge: true });
+                    alert("✅ Cerebro actualizado.");
+                } catch (e) { alert("⚠️ Error: No tienes permisos de Admin."); }
+            }
         };
 
         window.switchView = (v) => {
-            const admin = document.getElementById('admin-view'); const client = document.getElementById('client-view');
-            if(v === 'admin') { client.classList.add('view-hidden'); admin.classList.remove('view-hidden'); admin.classList.add('flex'); loadLeads(); }
-            else { admin.classList.add('view-hidden'); admin.classList.remove('flex'); client.classList.remove('view-hidden'); }
+            document.getElementById('admin-view').classList.toggle('view-hidden', v !== 'admin');
+            document.getElementById('client-view').classList.toggle('view-hidden', v === 'admin');
+            if(v === 'admin') { document.getElementById('admin-view').classList.add('flex'); loadLeads(); }
         };
-        window.showAdminTab = (t) => { document.getElementById('section-leads').classList.toggle('hidden', t !== 'leads'); document.getElementById('section-training').classList.toggle('hidden', t !== 'training'); };
-        
+
+        window.showAdminTab = (t) => {
+            document.getElementById('section-leads').classList.toggle('hidden', t !== 'leads');
+            document.getElementById('section-training').classList.toggle('hidden', t !== 'training');
+        };
+
         window.openDetailModal = async (id) => {
             document.getElementById('lead-detail-modal').classList.remove('hidden'); document.getElementById('lead-detail-modal').classList.add('flex');
             let data;
-            if(useLocalStorage) data = JSON.parse(localStorage.getItem('sl_leads_data')||'{}')[id];
-            else { const s = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', id)); if(s.exists()) data = s.data(); }
-            if(data) {
+            if (useLocalStorage) data = JSON.parse(localStorage.getItem('sl_leads_data') || '{}')[id];
+            else { 
+                try {
+                    const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', id)); if(snap.exists()) data = snap.data(); 
+                } catch (e) { console.error("Error abriendo lead"); }
+            }
+            if (data) {
                 document.getElementById('detail-summary').innerText = data.summary || "Generando...";
-                document.getElementById('detail-history').innerHTML = Object.values(data.history||{}).sort((a,b)=>a.ts-b.ts).map(m=>`<div><b>${m.role}:</b> ${m.text}</div>`).join('');
+                document.getElementById('detail-history').innerHTML = Object.values(data.history || {}).sort((a,b)=>a.ts-b.ts).map(m => `<div>${m.role}: ${m.text}</div>`).join('');
             }
         };
         window.closeDetailModal = () => { document.getElementById('lead-detail-modal').classList.add('hidden'); document.getElementById('lead-detail-modal').classList.remove('flex'); };
@@ -316,17 +362,27 @@
                     return `<tr class="border-b border-gray-100 hover:bg-gray-50"><td class="p-4 text-[10px] text-gray-400 font-mono">${d}</td><td class="p-4 font-bold text-[10px] text-slate-500">${l.status}</td><td class="p-4 text-sm font-bold text-slate-800">${name}</td><td class="p-4 text-right"><button onclick="openDetailModal('${l.id}')" class="text-blue-600 font-bold text-xs bg-blue-50 px-3 py-1 rounded">Ver</button></td></tr>`;
                 }).join('');
             };
-            if(useLocalStorage) render(getLocalLeads());
-            else onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'leads'), s => {
-                let d=[]; s.forEach(x=>d.push({id:x.id, ...x.data()})); render(d.sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0)));
-            });
+            
+            if (useLocalStorage) render(getLocalLeads());
+            else {
+                try {
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'leads'), snap => {
+                        let data = []; snap.forEach(d => data.push({id:d.id, ...d.data()}));
+                        render(data.sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0)));
+                    }, (err) => { console.warn("Error cargando leads:", err); });
+                } catch(e) { console.warn("Error snapshot"); }
+            }
         }
 
         async function save(txt, role, status = null) {
             const data = { lastMessage: txt, [`history.${Date.now()}`]: { role, text: txt, ts: Date.now() }, updatedAt: useLocalStorage ? Date.now() : serverTimestamp() };
             if(status) data.status = status;
-            if(useLocalStorage) saveLocalLead(data);
-            else if(currentUser) try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), data); } catch(e){saveLocalLead(data);}
+            if(useLocalStorage) { saveLocalLead(data); }
+            else if (currentUser) {
+                try {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), data);
+                } catch (e) { console.warn("Error guardando msg"); saveLocalLead(data); }
+            }
         }
 
         async function analyzeLead() {
