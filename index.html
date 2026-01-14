@@ -37,10 +37,10 @@
         .ws-button:active { transform: scale(0.96); }
         
         /* Contenedor de Botones Dinámicos */
-        .quick-actions-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 5px; margin-bottom: 15px; animation: slideIn 0.4s ease-out; }
+        .quick-actions-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 5px; margin-bottom: 15px; animation: slideIn 0.4s ease-out; padding-left: 5px; }
         .quick-btn { 
             border: 1px solid #007AFF; color: #007AFF; background: rgba(255,255,255,0.95); 
-            padding: 9px 18px; border-radius: 20px; font-size: 14px; font-weight: 500; 
+            padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: 500; 
             cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
         .quick-btn:active { background: #007AFF; color: white; transform: scale(0.95); }
@@ -191,7 +191,8 @@
                 <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
                     <p class="text-sm text-yellow-700">
                         ⚠️ <b>Sistema Autónomo:</b><br>
-                        Lucía generará botones automáticamente. Si quieres forzar unos específicos, escribe: <code>[BOTONES: Sí, No]</code> al final de una instrucción.
+                        Lucía generará botones automáticamente si usas este código al final de una pregunta:<br> 
+                        <code>[BOTONES: Sí, No, Tal vez]</code>
                     </p>
                 </div>
                 <textarea id="prompt-editor" class="w-full h-80 p-4 border border-gray-200 rounded-xl font-sans text-sm leading-relaxed focus:border-blue-500 outline-none resize-none"></textarea>
@@ -254,17 +255,7 @@
         let db, app, auth, appId; let useLocalStorage = false;
         let allLeadsCache = []; let currentFilter = 'hot';
 
-        // --- CEREBRO CON INSTRUCCIÓN DE AUTONOMÍA ---
-        const DEFAULT_PROMPT = `
-        ROL: Eres Lucía, la Asistente Inteligente del "Portal de Beneficios" en Florida.
-        PERSONALIDAD: Cálida, maternal, sofisticada, paciente y muy respetuosa.
-        
-        INSTRUCCIÓN DE INTERFAZ:
-        Tú controlas los botones. Siempre que hagas una pregunta con opciones (ej. Sí/No, Señor/Señora), DEBES agregar al final de tu respuesta el código: [BOTONES: Opción 1, Opción 2].
-        Ejemplo: "¿Desea continuar?" [BOTONES: Sí, No]
-        
-        OBJETIVO: Calificar al usuario y conectarlo con Jorge Guevara.
-        `;
+        const DEFAULT_PROMPT = `Eres Lucía, Asistente Inteligente.`;
         let currentSystemPrompt = DEFAULT_PROMPT;
 
         try {
@@ -479,46 +470,71 @@
             }
         }
 
-        // --- BOTONES DINÁMICOS (PARSING) ---
-        function parseAndShowButtons(text) {
+        // --- BOTONES INTELIGENTES (LÓGICA HÍBRIDA) ---
+        function detectContextAndShowButtons(text) {
+            const lowerText = text.toLowerCase();
+            const container = document.createElement('div');
+            container.className = "quick-actions-container";
+            let options = [];
+
+            // 1. REGLA: ¿Lucía está pidiendo explícitamente botones en su guion?
             const regex = /\[BOTONES:\s*(.*?)\]/i;
             const match = text.match(regex);
             
             if (match) {
-                const optionsStr = match[1];
-                const options = optionsStr.split(',').map(s => s.trim());
-                
-                const container = document.createElement('div');
-                container.className = "quick-actions-container";
+                // Si el guion dice [BOTONES: Sí, No], usa esos y borra el código del texto
+                options = match[1].split(',').map(s => s.trim());
+                // Importante: No limpiamos el texto aquí para no romper el HTML, solo mostramos los botones
+            } 
+            // 2. REGLA: Si no hay orden explícita, usa la inteligencia de contexto (Backup)
+            else if (!lowerText.includes("nombre") && !lowerText.includes("teléfono") && !lowerText.includes("celular")) {
+                if (lowerText.includes("prefiere que le llame") || lowerText.includes("tratamiento")) {
+                    options = ['Señor', 'Señora', 'Señorita', 'Solo mi nombre'];
+                }
+                else if (lowerText.includes("preocupa más") || lowerText.includes("deudas") || lowerText.includes("motivo")) {
+                    options = ['Gastos Funerales', 'Deudas / Herencia', 'Ambos'];
+                }
+                else if (lowerText.includes("hospital") || lowerText.includes("terminal") || lowerText.includes("seguro")) {
+                    options = ['No (Estoy bien)', 'Sí (Hospital/Hospicio)'];
+                }
+                else if (lowerText.includes("problemas graves") || lowerText.includes("corazón") || lowerText.includes("cáncer")) {
+                    options = ['Salud Estable', 'Tengo condiciones', 'Prefiero no decir'];
+                }
+                else if (lowerText.includes("presupuesto") || lowerText.includes("walmart")) {
+                    options = ['Sí, es posible', 'Busco algo menor', 'Ver opciones'];
+                }
+            }
+            
+            // Renderizar
+            if (options.length > 0) {
                 options.forEach(opt => {
                     const btn = document.createElement('button');
                     btn.className = "quick-btn";
                     btn.innerText = opt;
-                    btn.onclick = () => {
-                        container.remove();
-                        sendMessage(opt);
-                    };
+                    btn.onclick = () => { container.remove(); sendMessage(opt); };
                     container.appendChild(btn);
                 });
                 document.getElementById('chat-box').appendChild(container);
-                document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
-
-                return text.replace(regex, "").trim();
+                setTimeout(() => document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight, 100);
             }
-            return text;
         }
 
         function appendMessageBubble(role, text, shouldSave = true) {
             const isClosing = text.includes("[CONECTAR_JORGE]");
             let cleanText = text.replace("[CONECTAR_JORGE]", "");
-
-            if (role === 'lucia') {
-                cleanText = parseAndShowButtons(cleanText);
-            }
+            
+            // Limpiar código de botones si existe para que no se vea feo
+            cleanText = cleanText.replace(/\[BOTONES:.*?\]/i, "");
 
             const div = document.createElement('div'); div.className = `bubble ${role} shadow-sm`;
             div.innerHTML = cleanText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
             document.getElementById('chat-box').appendChild(div);
+            
+            // Activar botones si es Lucía
+            if (role === 'lucia') {
+                detectContextAndShowButtons(text); // Pasamos el texto original con el código
+            }
+
             div.scrollIntoView({ behavior: 'smooth' });
             
             if (isClosing) {
