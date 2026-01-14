@@ -10,24 +10,61 @@
         /* --- ESTILOS PREMIUM --- */
         body { font-family: 'Inter', sans-serif; background-color: #f2f2f7; color: #1d1d1f; -webkit-tap-highlight-color: transparent; }
         .chat-container { height: 100%; overflow-y: auto; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
-        .bubble { max-width: 85%; padding: 14px 18px; border-radius: 22px; margin-bottom: 12px; font-size: 15px; line-height: 1.5; box-shadow: 0 1px 2px rgba(0,0,0,0.05); animation: slideIn 0.3s ease-out; }
+        
+        .bubble { 
+            max-width: 85%; padding: 14px 18px; border-radius: 22px; margin-bottom: 12px; 
+            font-size: 15px; line-height: 1.5; box-shadow: 0 1px 2px rgba(0,0,0,0.05); 
+            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
+        }
         @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
         .lucia { background: #ffffff; color: #1d1d1f; align-self: flex-start; border-bottom-left-radius: 4px; }
         .user { background: #007AFF; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+
         .typing-dot { width: 6px; height: 6px; background: #8e8e93; border-radius: 50%; animation: typing 1.4s infinite ease-in-out both; }
         .typing-dot:nth-child(1) { animation-delay: -0.32s; }
         .typing-dot:nth-child(2) { animation-delay: -0.16s; }
         @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .ws-button { background: #34C759; color: white; padding: 16px; border-radius: 18px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 15px; width: 100%; box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3); cursor: pointer; transition: transform 0.2s; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .ws-button { 
+            background: #34C759; color: white; padding: 16px; border-radius: 18px; font-weight: 600; 
+            display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 15px; width: 100%;
+            box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3); cursor: pointer; transition: transform 0.2s; 
+        }
         .ws-button:active { transform: scale(0.96); }
-        .quick-btn { border: 1px solid #007AFF; color: #007AFF; background: rgba(255,255,255,0.9); padding: 9px 18px; border-radius: 25px; font-size: 14px; font-weight: 500; margin-right: 6px; margin-top: 8px; cursor: pointer; transition: all 0.2s; }
+        
+        /* Contenedor de Botones Dinámicos */
+        .quick-actions-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 5px; margin-bottom: 15px; animation: slideIn 0.4s ease-out; }
+        .quick-btn { 
+            border: 1px solid #007AFF; color: #007AFF; background: rgba(255,255,255,0.95); 
+            padding: 9px 18px; border-radius: 20px; font-size: 14px; font-weight: 500; 
+            cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
         .quick-btn:active { background: #007AFF; color: white; transform: scale(0.95); }
+        
+        /* UI Admin */
         .view-hidden { display: none !important; }
-        .admin-trigger { cursor: pointer; padding: 20px; opacity: 0.1; }
+        .admin-trigger { cursor: pointer; padding: 20px; opacity: 0.1; } 
         .admin-trigger:active { opacity: 0.5; }
-        .app-card { width: 100%; max-width: 450px; background: #fbfbfd; height: 100vh; max-height: 100vh; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-        @media (min-width: 768px) { .app-card { height: 85vh; max-height: 800px; border-radius: 40px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 4px solid #fff; } }
+
+        .app-card {
+            width: 100%; max-width: 450px; background: #fbfbfd; 
+            height: 100vh; max-height: 100vh;
+            display: flex; flex-direction: column; overflow: hidden; position: relative;
+        }
+        
+        @media (min-width: 768px) {
+            .app-card {
+                height: 85vh; max-height: 800px;
+                border-radius: 40px;
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+                border: 4px solid #fff;
+            }
+        }
+
         .tab-active { background-color: #007AFF; color: white; }
         .tab-inactive { background-color: white; color: #6b7280; border: 1px solid #e5e7eb; }
         .crm-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 60; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
@@ -65,7 +102,6 @@
         </div>
 
         <div class="p-4 bg-white border-t border-gray-200">
-            <!-- Formulario de Chat (Maneja el Enter automáticamente) -->
             <form id="chat-form" class="flex items-center gap-2 mb-2" autocomplete="off">
                 <div class="flex-grow bg-gray-100 rounded-full border border-transparent focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all">
                     <input id="user-input" type="text" name="message" autocomplete="off" placeholder="Escribe aquí..." class="w-full bg-transparent px-5 py-3 outline-none text-[16px] text-gray-800 placeholder-gray-400 rounded-full">
@@ -80,7 +116,7 @@
         </div>
     </div>
 
-    <!-- MODAL LOGIN -->
+    <!-- MODAL LOGIN (ADMIN) -->
     <div id="login-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-xs transform transition-all">
             <div class="text-center mb-6">
@@ -88,7 +124,6 @@
                 <p class="text-sm text-gray-500">Solo personal autorizado</p>
             </div>
             
-            <!-- Formulario de Login (Maneja el Enter automáticamente) -->
             <form id="login-form">
                 <input type="email" id="admin-email" name="email" autocomplete="username" class="w-full border-b border-gray-200 py-3 px-2 mb-3 focus:border-blue-500 outline-none text-gray-800" placeholder="Correo electrónico">
                 <input type="password" id="admin-pass" name="password" autocomplete="current-password" class="w-full border-b border-gray-200 py-3 px-2 mb-6 focus:border-blue-500 outline-none text-gray-800" placeholder="Contraseña">
@@ -154,7 +189,10 @@
             <div class="max-w-3xl mx-auto bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Cerebro de Lucía</h2>
                 <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-                    <p class="text-sm text-yellow-700">⚠️ <b>Importante:</b> Escribe aquí tus instrucciones.</p>
+                    <p class="text-sm text-yellow-700">
+                        ⚠️ <b>Sistema Autónomo:</b><br>
+                        Lucía generará botones automáticamente. Si quieres forzar unos específicos, escribe: <code>[BOTONES: Sí, No]</code> al final de una instrucción.
+                    </p>
                 </div>
                 <textarea id="prompt-editor" class="w-full h-80 p-4 border border-gray-200 rounded-xl font-sans text-sm leading-relaxed focus:border-blue-500 outline-none resize-none"></textarea>
                 <div class="mt-4 flex justify-end">
@@ -216,7 +254,17 @@
         let db, app, auth, appId; let useLocalStorage = false;
         let allLeadsCache = []; let currentFilter = 'hot';
 
-        const DEFAULT_PROMPT = `Eres Lucía, Asistente Inteligente.`;
+        // --- CEREBRO CON INSTRUCCIÓN DE AUTONOMÍA ---
+        const DEFAULT_PROMPT = `
+        ROL: Eres Lucía, la Asistente Inteligente del "Portal de Beneficios" en Florida.
+        PERSONALIDAD: Cálida, maternal, sofisticada, paciente y muy respetuosa.
+        
+        INSTRUCCIÓN DE INTERFAZ:
+        Tú controlas los botones. Siempre que hagas una pregunta con opciones (ej. Sí/No, Señor/Señora), DEBES agregar al final de tu respuesta el código: [BOTONES: Opción 1, Opción 2].
+        Ejemplo: "¿Desea continuar?" [BOTONES: Sí, No]
+        
+        OBJETIVO: Calificar al usuario y conectarlo con Jorge Guevara.
+        `;
         let currentSystemPrompt = DEFAULT_PROMPT;
 
         try {
@@ -257,13 +305,11 @@
             });
         } else { initAuth(); }
 
-        // --- MANEJO DE FORMULARIOS ---
         document.getElementById('chat-form')?.addEventListener('submit', (e) => { e.preventDefault(); sendMessage(); });
         document.getElementById('login-form')?.addEventListener('submit', (e) => { e.preventDefault(); performLogin(); });
 
         window.openLoginModal = () => { if (currentUser && !currentUser.isAnonymous) { switchView('admin'); return; } document.getElementById('login-modal').classList.remove('hidden'); };
         window.closeLoginModal = () => document.getElementById('login-modal').classList.add('hidden');
-        
         window.performLogin = async () => {
             const email = document.getElementById('admin-email').value; const pass = document.getElementById('admin-pass').value;
             const errorMsg = document.getElementById('login-error');
@@ -433,11 +479,45 @@
             }
         }
 
+        // --- BOTONES DINÁMICOS (PARSING) ---
+        function parseAndShowButtons(text) {
+            const regex = /\[BOTONES:\s*(.*?)\]/i;
+            const match = text.match(regex);
+            
+            if (match) {
+                const optionsStr = match[1];
+                const options = optionsStr.split(',').map(s => s.trim());
+                
+                const container = document.createElement('div');
+                container.className = "quick-actions-container";
+                options.forEach(opt => {
+                    const btn = document.createElement('button');
+                    btn.className = "quick-btn";
+                    btn.innerText = opt;
+                    btn.onclick = () => {
+                        container.remove();
+                        sendMessage(opt);
+                    };
+                    container.appendChild(btn);
+                });
+                document.getElementById('chat-box').appendChild(container);
+                document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
+
+                return text.replace(regex, "").trim();
+            }
+            return text;
+        }
+
         function appendMessageBubble(role, text, shouldSave = true) {
             const isClosing = text.includes("[CONECTAR_JORGE]");
-            const clean = text.replace("[CONECTAR_JORGE]", "");
+            let cleanText = text.replace("[CONECTAR_JORGE]", "");
+
+            if (role === 'lucia') {
+                cleanText = parseAndShowButtons(cleanText);
+            }
+
             const div = document.createElement('div'); div.className = `bubble ${role} shadow-sm`;
-            div.innerHTML = clean.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+            div.innerHTML = cleanText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
             document.getElementById('chat-box').appendChild(div);
             div.scrollIntoView({ behavior: 'smooth' });
             
@@ -445,8 +525,8 @@
                 const b = document.createElement('div'); b.className = "ws-button"; b.innerHTML = "<span>Conectar con Jorge por WhatsApp</span>";
                 b.onclick = () => window.open(`https://wa.me/${JORGE_PHONE}?text=Hola Jorge, acabo de hablar con Lucía...`);
                 document.getElementById('chat-box').appendChild(b);
-                if(shouldSave) { save(clean, role, '🔥 CALIENTE').then(() => analyzeLead()); }
-            } else if(shouldSave) { save(clean, role); }
+                if(shouldSave) { save(cleanText, role, '🔥 CALIENTE').then(() => analyzeLead()); }
+            } else if(shouldSave) { save(cleanText, role); }
         }
 
         async function sendMessage(manualText = null) {
