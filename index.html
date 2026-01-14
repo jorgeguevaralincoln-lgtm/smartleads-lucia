@@ -98,44 +98,33 @@
         </div>
 
         <div class="p-4 bg-white border-t border-gray-200">
-            <!-- Formulario falso para contener autocompletado -->
-            <form action="#" onsubmit="event.preventDefault();" autocomplete="off">
-                <input type="text" name="fake_usernameremembered" style="display:none">
-                <input type="password" name="fake_passwordremembered" style="display:none">
-                
-                <div class="flex items-center gap-2 mb-2">
-                    <div class="flex-grow bg-gray-100 rounded-full border border-transparent focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                        <!-- Input con nombre aleatorio para evitar sugerencias -->
-                        <input id="user-input" type="text" name="search_field_x_gen_123" autocomplete="off" spellcheck="false" placeholder="Escribe aquí..." class="w-full bg-transparent px-5 py-3 outline-none text-[16px] text-gray-800 placeholder-gray-400 rounded-full">
-                    </div>
-                    <button type="button" id="send-btn" class="bg-[#007AFF] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 pl-0.5"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>
-                    </button>
+            <div class="flex items-center gap-2 mb-2">
+                <div class="flex-grow bg-gray-100 rounded-full border border-transparent focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                    <input id="user-input" type="text" name="chat_message_input" autocomplete="off" placeholder="Escribe aquí..." class="w-full bg-transparent px-5 py-3 outline-none text-[16px] text-gray-800 placeholder-gray-400 rounded-full">
                 </div>
-            </form>
+                <button id="send-btn" class="bg-[#007AFF] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 pl-0.5"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>
+                </button>
+            </div>
             <p class="text-center text-[10px] text-gray-400 select-none">
                 <span class="admin-trigger" onclick="openLoginModal()">SmartLeads</span> • Conexión Segura
             </p>
         </div>
     </div>
 
-    <!-- MODAL LOGIN (AISLADO) -->
+    <!-- MODAL LOGIN -->
     <div id="login-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-xs transform transition-all">
             <div class="text-center mb-6">
                 <h3 class="text-xl font-bold text-gray-900">Acceso Admin</h3>
                 <p class="text-sm text-gray-500">Solo personal autorizado</p>
             </div>
-            
-            <form onsubmit="event.preventDefault(); performLogin();" autocomplete="on">
-                <input type="email" id="admin-email" name="smartleads_admin_email" autocomplete="username" class="w-full border-b border-gray-200 py-3 px-2 mb-3 focus:border-blue-500 outline-none text-gray-800" placeholder="Correo electrónico">
-                <input type="password" id="admin-pass" name="smartleads_admin_pass" autocomplete="current-password" class="w-full border-b border-gray-200 py-3 px-2 mb-6 focus:border-blue-500 outline-none text-gray-800" placeholder="Contraseña">
-                
-                <div class="flex gap-3">
-                    <button type="button" onclick="closeLoginModal()" class="flex-1 py-3 rounded-xl bg-gray-100 text-gray-600 font-bold active:scale-95 transition-transform">Cancelar</button>
-                    <button type="submit" class="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold shadow-lg active:scale-95 transition-transform">Entrar</button>
-                </div>
-            </form>
+            <input type="email" id="admin-email" name="admin_email_field" autocomplete="username" class="w-full border-b border-gray-200 py-3 px-2 mb-3 focus:border-blue-500 outline-none text-gray-800" placeholder="Correo electrónico">
+            <input type="password" id="admin-pass" name="admin_password_field" autocomplete="current-password" class="w-full border-b border-gray-200 py-3 px-2 mb-6 focus:border-blue-500 outline-none text-gray-800" placeholder="Contraseña">
+            <div class="flex gap-3">
+                <button onclick="closeLoginModal()" class="flex-1 py-3 rounded-xl bg-gray-100 text-gray-600 font-bold active:scale-95 transition-transform">Cancelar</button>
+                <button onclick="performLogin()" class="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold shadow-lg active:scale-95 transition-transform">Entrar</button>
+            </div>
             <p id="login-error" class="text-center text-xs text-red-500 mt-4 hidden font-bold"></p>
         </div>
     </div>
@@ -296,25 +285,10 @@
 
         window.openLoginModal = () => { if (currentUser && !currentUser.isAnonymous) { switchView('admin'); return; } document.getElementById('login-modal').classList.remove('hidden'); };
         window.closeLoginModal = () => document.getElementById('login-modal').classList.add('hidden');
-        
         window.performLogin = async () => {
             const email = document.getElementById('admin-email').value; const pass = document.getElementById('admin-pass').value;
-            const errorMsg = document.getElementById('login-error');
-            
-            if(useLocalStorage) {
-                if(pass === "123456") { closeLoginModal(); switchView('admin'); } 
-                else { errorMsg.innerText = "Modo Local: Usa 123456"; errorMsg.classList.remove('hidden'); }
-                return;
-            }
-
-            try {
-                await signInWithEmailAndPassword(auth, email, pass);
-                closeLoginModal();
-                switchView('admin');
-            } catch (error) {
-                errorMsg.innerText = "Error: Verifica tu correo o contraseña.";
-                errorMsg.classList.remove('hidden');
-            }
+            if(useLocalStorage) { if(pass==="123456"){closeLoginModal(); switchView('admin');} else document.getElementById('login-error').innerText="Modo Local: 123456"; document.getElementById('login-error').classList.remove('hidden'); return; }
+            try { await signInWithEmailAndPassword(auth, email, pass); closeLoginModal(); switchView('admin'); } catch (error) { document.getElementById('login-error').innerText = "Credenciales incorrectas"; document.getElementById('login-error').classList.remove('hidden'); }
         };
 
         window.logoutAdmin = async () => { await signOut(auth); await signInAnonymously(auth); switchView('client'); };
@@ -496,13 +470,9 @@
         }
 
         async function sendMessage(manualText = null) {
-            const inputEl = document.getElementById('user-input');
-            const text = manualText || inputEl.value.trim();
+            const text = manualText || document.getElementById('user-input').value.trim();
             if (!text) return;
-            
-            appendMessageBubble('user', text); 
-            if(inputEl) inputEl.value = '';
-            
+            appendMessageBubble('user', text); document.getElementById('user-input').value = '';
             document.getElementById('loading').classList.remove('hidden');
             stepCount++; chatHistory.push({ role: "user", parts: [{ text }] });
             
@@ -523,7 +493,7 @@
         }
 
         document.getElementById('send-btn').addEventListener('click', () => sendMessage());
-        document.getElementById('user-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+        document.querySelector('input[name="chat_message_input"]').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
         function saveLocalLead(data) { const l = JSON.parse(localStorage.getItem('sl_leads_data')||'{}'); l[sessionId] = {...l[sessionId], ...data, id:sessionId, updatedAt:new Date().toISOString()}; localStorage.setItem('sl_leads_data', JSON.stringify(l)); }
         function getLocalLeads() { return Object.values(JSON.parse(localStorage.getItem('sl_leads_data')||'{}')).sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt)); }
     </script>
