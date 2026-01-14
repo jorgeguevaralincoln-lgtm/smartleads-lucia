@@ -7,8 +7,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* --- ESTILOS VISUALES --- */
+        /* --- ESTILOS PREMIUM --- */
         body { font-family: 'Inter', sans-serif; background-color: #f2f2f7; color: #1d1d1f; -webkit-tap-highlight-color: transparent; }
+        
         .chat-container { height: 100%; overflow-y: auto; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
         
         .bubble { 
@@ -43,6 +44,7 @@
         }
         .quick-btn:active { background: #007AFF; color: white; transform: scale(0.95); }
         
+        /* UI Admin */
         .view-hidden { display: none !important; }
         .admin-trigger { cursor: pointer; padding: 20px; opacity: 0.1; } 
         .admin-trigger:active { opacity: 0.5; }
@@ -84,7 +86,8 @@
 
         <div id="chat-box" class="chat-container p-5 flex-grow no-scrollbar bg-[#f5f5f7]">
             <div class="bubble lucia shadow-sm">
-                ¡Hola! 😊 Soy <b>Lucía</b>, su asistente personal. ¿Con quién tengo el gusto?
+                ¡Hola! 😊 Soy <b>Lucía</b>, su asistente personal.<br><br>
+                <b>¿Con quién tengo el gusto de hablar?</b>
             </div>
         </div>
 
@@ -95,33 +98,44 @@
         </div>
 
         <div class="p-4 bg-white border-t border-gray-200">
-            <div class="flex items-center gap-2 mb-2">
-                <div class="flex-grow bg-gray-100 rounded-full border border-transparent focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                    <input id="user-input" type="text" name="chat_message_input" autocomplete="off" placeholder="Escribe aquí..." class="w-full bg-transparent px-5 py-3 outline-none text-[16px] text-gray-800 placeholder-gray-400 rounded-full">
+            <!-- Formulario falso para contener autocompletado -->
+            <form action="#" onsubmit="event.preventDefault();" autocomplete="off">
+                <input type="text" name="fake_usernameremembered" style="display:none">
+                <input type="password" name="fake_passwordremembered" style="display:none">
+                
+                <div class="flex items-center gap-2 mb-2">
+                    <div class="flex-grow bg-gray-100 rounded-full border border-transparent focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                        <!-- Input con nombre aleatorio para evitar sugerencias -->
+                        <input id="user-input" type="text" name="search_field_x_gen_123" autocomplete="off" spellcheck="false" placeholder="Escribe aquí..." class="w-full bg-transparent px-5 py-3 outline-none text-[16px] text-gray-800 placeholder-gray-400 rounded-full">
+                    </div>
+                    <button type="button" id="send-btn" class="bg-[#007AFF] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 pl-0.5"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>
+                    </button>
                 </div>
-                <button id="send-btn" class="bg-[#007AFF] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 pl-0.5"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>
-                </button>
-            </div>
+            </form>
             <p class="text-center text-[10px] text-gray-400 select-none">
                 <span class="admin-trigger" onclick="openLoginModal()">SmartLeads</span> • Conexión Segura
             </p>
         </div>
     </div>
 
-    <!-- MODAL LOGIN -->
+    <!-- MODAL LOGIN (AISLADO) -->
     <div id="login-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-xs transform transition-all">
             <div class="text-center mb-6">
                 <h3 class="text-xl font-bold text-gray-900">Acceso Admin</h3>
                 <p class="text-sm text-gray-500">Solo personal autorizado</p>
             </div>
-            <input type="email" id="admin-email" name="admin_email_field" autocomplete="username" class="w-full border-b border-gray-200 py-3 px-2 mb-3 focus:border-blue-500 outline-none text-gray-800" placeholder="Correo electrónico">
-            <input type="password" id="admin-pass" name="admin_password_field" autocomplete="current-password" class="w-full border-b border-gray-200 py-3 px-2 mb-6 focus:border-blue-500 outline-none text-gray-800" placeholder="Contraseña">
-            <div class="flex gap-3">
-                <button onclick="closeLoginModal()" class="flex-1 py-3 rounded-xl bg-gray-100 text-gray-600 font-bold active:scale-95 transition-transform">Cancelar</button>
-                <button onclick="performLogin()" class="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold shadow-lg active:scale-95 transition-transform">Entrar</button>
-            </div>
+            
+            <form onsubmit="event.preventDefault(); performLogin();" autocomplete="on">
+                <input type="email" id="admin-email" name="smartleads_admin_email" autocomplete="username" class="w-full border-b border-gray-200 py-3 px-2 mb-3 focus:border-blue-500 outline-none text-gray-800" placeholder="Correo electrónico">
+                <input type="password" id="admin-pass" name="smartleads_admin_pass" autocomplete="current-password" class="w-full border-b border-gray-200 py-3 px-2 mb-6 focus:border-blue-500 outline-none text-gray-800" placeholder="Contraseña">
+                
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeLoginModal()" class="flex-1 py-3 rounded-xl bg-gray-100 text-gray-600 font-bold active:scale-95 transition-transform">Cancelar</button>
+                    <button type="submit" class="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold shadow-lg active:scale-95 transition-transform">Entrar</button>
+                </div>
+            </form>
             <p id="login-error" class="text-center text-xs text-red-500 mt-4 hidden font-bold"></p>
         </div>
     </div>
@@ -134,7 +148,6 @@
                 <p class="text-[10px] text-slate-400 font-medium">Panel de Control</p>
             </div>
             
-            <!-- Botón de REFRESCAR -->
             <button onclick="loadLeads()" class="bg-blue-800 hover:bg-blue-700 text-white p-2 rounded-full shadow-md transition-all active:scale-90" title="Refrescar Datos">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
             </button>
@@ -146,7 +159,6 @@
             </div>
         </div>
         
-        <!-- SECCIÓN DE LEADS -->
         <div id="section-leads" class="flex-grow flex flex-col overflow-hidden bg-gray-50">
             <div class="px-6 pt-6 pb-2 flex gap-4 border-b border-gray-200 bg-white sticky top-0 z-20">
                 <button onclick="filterLeads('hot')" id="filter-hot" class="tab-active px-6 py-2 rounded-full text-sm font-bold shadow-sm transition-all flex items-center gap-2">
@@ -164,24 +176,23 @@
                         <tr class="text-gray-400 text-[10px] uppercase font-bold tracking-wider">
                             <th class="p-4 w-32">Fecha</th>
                             <th class="p-4">Prospecto</th>
-                            <th class="p-4">Resumen Rápido</th>
+                            <th class="p-4">Interés Principal</th>
                             <th class="p-4 text-right">Acción</th>
                         </tr>
                     </thead>
                     <tbody id="leads-table-body" class="divide-y divide-gray-50"></tbody>
                 </table>
                 <div id="empty-state" class="hidden text-center py-20">
-                    <p class="text-gray-400 text-sm">No hay leads nuevos por contactar.</p>
+                    <p class="text-gray-400 text-sm">No hay leads pendientes por contactar.</p>
                 </div>
             </div>
         </div>
 
-        <!-- SECCIÓN DE ENTRENAMIENTO -->
         <div id="section-training" class="flex-grow p-6 bg-gray-50 overflow-y-auto hidden">
             <div class="max-w-3xl mx-auto bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Cerebro de Lucía</h2>
                 <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-                    <p class="text-sm text-yellow-700">⚠️ <b>Importante:</b> Escribe aquí tus instrucciones. Si quieres capturar el teléfono, añade: "Pregunta el número de teléfono antes de finalizar".</p>
+                    <p class="text-sm text-yellow-700">⚠️ <b>Importante:</b> Escribe aquí tus instrucciones.</p>
                 </div>
                 <textarea id="prompt-editor" class="w-full h-80 p-4 border border-gray-200 rounded-xl font-sans text-sm leading-relaxed focus:border-blue-500 outline-none resize-none"></textarea>
                 <div class="mt-4 flex justify-end">
@@ -201,7 +212,6 @@
             <div class="p-6 overflow-y-auto bg-white flex-grow">
                 <div id="detail-summary" class="text-sm text-slate-700 bg-blue-50 p-5 rounded-2xl border border-blue-100 leading-relaxed font-medium whitespace-pre-line">Esperando análisis...</div>
                 
-                <!-- Datos de contacto extraídos -->
                 <div id="contact-info" class="mt-4 hidden">
                     <p class="text-xs font-bold text-gray-400 uppercase">Teléfono Detectado</p>
                     <p class="text-lg font-bold text-gray-800" id="detail-phone">--</p>
@@ -221,13 +231,11 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, updateDoc, serverTimestamp, collection, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // CLAVES (Recuerda dividir la key por seguridad)
-        const P1 = "AIzaSyCPDuual8XBejuV"; const P2 = "UPbKecfonbIh6SNolDk";
+        const P1 = "AIzaSyCjhXpHtovaqye6"; const P2 = "O4r2ir2tT5lksOIrNfs";
         const API_KEY = P1 + P2;
         const JORGE_PHONE = "14079553077";
         const isInCanvas = typeof __firebase_config !== 'undefined';
         const MODEL_NAME = isInCanvas ? "gemini-2.5-flash-preview-09-2025" : "gemini-1.5-flash";
-        
         const sessionId = localStorage.getItem('sl_session_id') || crypto.randomUUID();
         if(!localStorage.getItem('sl_session_id')) localStorage.setItem('sl_session_id', sessionId);
 
@@ -244,9 +252,8 @@
         let chatHistory = []; let currentUser = null; let stepCount = 0;
         let db, app, auth, appId; let useLocalStorage = false;
         let allLeadsCache = []; let currentFilter = 'hot';
-        
-        // --- CEREBRO BASE LIMPIO ---
-        const DEFAULT_PROMPT = `Eres Lucía, Asistente Inteligente. Saluda y espera instrucciones del Admin.`;
+
+        const DEFAULT_PROMPT = `Eres Lucía, Asistente Inteligente.`;
         let currentSystemPrompt = DEFAULT_PROMPT;
 
         try {
@@ -263,7 +270,7 @@
             useLocalStorage = true; currentUser = { uid: 'local' };
             const dot = document.getElementById('db-status-dot');
             if(dot) dot.classList.replace('bg-green-500', 'bg-red-500');
-            saveLocalLead({ startedAt: new Date().toISOString(), lastMessage: 'Modo Local', status: 'Navegando', summary: '...' });
+            saveLocalLead({ startedAt: new Date().toISOString(), lastMessage: 'Modo Local', status: 'Navegando', summary: 'Pendiente...' });
             loadSettings();
         }
 
@@ -281,7 +288,7 @@
                     currentUser = user; 
                     if (user.isAnonymous) {
                         loadSettings();
-                        try { setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), { startedAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: 'Sesión iniciada', status: 'Navegando', summary: '...' }, { merge: true }); } catch(e){setupLocalMode();}
+                        try { setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), { startedAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: 'Sesión iniciada', status: 'Navegando', summary: 'Pendiente...' }, { merge: true }); } catch(e){setupLocalMode();}
                     }
                 } else initAuth();
             });
@@ -289,11 +296,27 @@
 
         window.openLoginModal = () => { if (currentUser && !currentUser.isAnonymous) { switchView('admin'); return; } document.getElementById('login-modal').classList.remove('hidden'); };
         window.closeLoginModal = () => document.getElementById('login-modal').classList.add('hidden');
+        
         window.performLogin = async () => {
             const email = document.getElementById('admin-email').value; const pass = document.getElementById('admin-pass').value;
-            if(useLocalStorage) { if(pass==="123456"){closeLoginModal(); switchView('admin');} else document.getElementById('login-error').innerText="Modo Local: 123456"; document.getElementById('login-error').classList.remove('hidden'); return; }
-            try { await signInWithEmailAndPassword(auth, email, pass); closeLoginModal(); switchView('admin'); } catch (error) { document.getElementById('login-error').innerText = "Credenciales incorrectas"; document.getElementById('login-error').classList.remove('hidden'); }
+            const errorMsg = document.getElementById('login-error');
+            
+            if(useLocalStorage) {
+                if(pass === "123456") { closeLoginModal(); switchView('admin'); } 
+                else { errorMsg.innerText = "Modo Local: Usa 123456"; errorMsg.classList.remove('hidden'); }
+                return;
+            }
+
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
+                closeLoginModal();
+                switchView('admin');
+            } catch (error) {
+                errorMsg.innerText = "Error: Verifica tu correo o contraseña.";
+                errorMsg.classList.remove('hidden');
+            }
         };
+
         window.logoutAdmin = async () => { await signOut(auth); await signInAnonymously(auth); switchView('client'); };
 
         async function loadSettings() {
@@ -333,7 +356,6 @@
                     document.getElementById('detail-history').innerHTML = Object.values(data.history).sort((a,b)=>a.ts-b.ts)
                         .map(m=>`<div class="mb-2"><span class="font-bold ${m.role==='lucia'?'text-blue-600':'text-gray-800'}">${m.role === 'lucia' ? 'Lucía' : 'Cliente'}:</span> ${m.text}</div>`).join('');
                 }
-                // Manejo de Teléfono
                 const callBtn = document.getElementById('call-btn');
                 if (data.phone) {
                     callBtn.innerHTML = `📞 Llamar a ${data.phone}`;
@@ -355,6 +377,7 @@
             currentFilter = filter;
             const btnHot = document.getElementById('filter-hot');
             const btnAll = document.getElementById('filter-all');
+            
             if (filter === 'hot') {
                 btnHot.className = "bg-[#007AFF] text-white px-6 py-2 rounded-full text-sm font-bold shadow-sm flex items-center gap-2 cursor-pointer";
                 btnAll.className = "bg-white text-gray-500 border border-gray-200 px-6 py-2 rounded-full text-sm font-medium hover:bg-gray-50 flex items-center gap-2 cursor-pointer";
@@ -372,7 +395,7 @@
             
             const filtered = allLeadsCache.filter(l => {
                 if (currentFilter === 'all') return true; 
-                return l.status === '🔥 CALIENTE'; // Solo mostrar los calientes reales
+                return l.status === '🔥 CALIENTE' || (l.summary && l.summary.length > 20);
             });
 
             if (filtered.length === 0) { emptyState.classList.remove('hidden'); } else { emptyState.classList.add('hidden'); }
@@ -384,7 +407,6 @@
             filtered.forEach(l => {
                 const d = new Date(l.updatedAt?.seconds*1000 || l.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', month:'short', day:'numeric'});
                 let name = l.summary?.split("Nombre:")[1]?.split("\n")[0] || "Prospecto";
-                // Limpieza de nombre
                 if(name.length > 25) name = "Prospecto";
                 
                 let interes = "General";
@@ -420,22 +442,22 @@
             if(status) data.status = status;
             if(useLocalStorage) { saveLocalLead(data); }
             else if (currentUser) {
-                try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), data); } catch (e) { saveLocalLead(data); }
+                try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), data); } catch (e) { console.warn("Error guardando msg"); saveLocalLead(data); }
             }
         }
 
         async function analyzeLead() {
-            const models = ["gemini-2.5-flash-preview-09-2025", "gemini-1.5-flash"];
+            const models = ["gemini-1.5-flash", "gemini-2.5-flash-preview-09-2025"];
             const prompt = `
             ANALIZA el chat completo.
             1. Extrae el nombre del usuario.
-            2. Extrae el número de teléfono si el usuario lo dio.
+            2. BUSCA cualquier número de teléfono (incluso si está parcial).
             3. Genera un resumen de 2 líneas: Dolor principal, salud y presupuesto.
             
-            FORMATO DE RESPUESTA (Estricto):
+            FORMATO:
             Nombre: [Nombre]
             Phone: [Número o "No disponible"]
-            Resumen: [Texto del resumen]
+            Resumen: [Texto]
             `;
             for (const m of models) {
                 try {
@@ -444,7 +466,6 @@
                     const d = await r.json();
                     const s = d.candidates[0].content.parts[0].text;
                     
-                    // Extracción inteligente de teléfono
                     let phone = null;
                     const phoneMatch = s.match(/Phone:\s*([\d\+\-\(\) ]+)/);
                     if (phoneMatch && phoneMatch[1].trim() !== "No disponible") phone = phoneMatch[1].trim();
@@ -470,21 +491,22 @@
                 const b = document.createElement('div'); b.className = "ws-button"; b.innerHTML = "<span>Conectar con Jorge por WhatsApp</span>";
                 b.onclick = () => window.open(`https://wa.me/${JORGE_PHONE}?text=Hola Jorge, acabo de hablar con Lucía...`);
                 document.getElementById('chat-box').appendChild(b);
-                // Aquí aseguramos que el estado cambie a CALIENTE en la base de datos
-                if(shouldSave) { 
-                    save(clean, role, '🔥 CALIENTE').then(() => analyzeLead()); 
-                }
+                if(shouldSave) { save(clean, role, '🔥 CALIENTE').then(() => analyzeLead()); }
             } else if(shouldSave) { save(clean, role); }
         }
 
         async function sendMessage(manualText = null) {
-            const text = manualText || document.getElementById('user-input').value.trim();
+            const inputEl = document.getElementById('user-input');
+            const text = manualText || inputEl.value.trim();
             if (!text) return;
-            appendMessageBubble('user', text); document.getElementById('user-input').value = '';
+            
+            appendMessageBubble('user', text); 
+            if(inputEl) inputEl.value = '';
+            
             document.getElementById('loading').classList.remove('hidden');
             stepCount++; chatHistory.push({ role: "user", parts: [{ text }] });
             
-            const models = ["gemini-2.5-flash-preview-09-2025", "gemini-1.5-flash"];
+            const models = ["gemini-1.5-flash", "gemini-2.5-flash-preview-09-2025"];
             let success = false;
             for (const m of models) {
                 try {
@@ -494,15 +516,6 @@
                     const t = d.candidates[0].content.parts[0].text;
                     document.getElementById('loading').classList.add('hidden');
                     appendMessageBubble('lucia', t); chatHistory.push({ role: "model", parts: [{ text: t }] });
-                    if(stepCount === 1) {
-                        const c = document.createElement('div'); c.className = "flex flex-wrap mt-1 mb-6";
-                        ['Señor', 'Señora', 'Srta'].forEach(val => {
-                            const b = document.createElement('button'); b.className = "quick-btn"; b.innerText = val;
-                            b.onclick = () => { c.remove(); sendMessage(`Prefiero que me llame: ${val}`); };
-                            c.appendChild(b);
-                        });
-                        document.getElementById('chat-box').appendChild(c);
-                    }
                     success = true; break; 
                 } catch (e) {}
             }
