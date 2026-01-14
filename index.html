@@ -2,149 +2,200 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SmartLeads | Asistente Inteligente</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* --- ESTILOS PREMIUM (APPLE DESIGN) --- */
         body { font-family: 'Inter', sans-serif; background-color: #f2f2f7; color: #1d1d1f; -webkit-tap-highlight-color: transparent; }
-        .chat-container { height: 72vh; scroll-behavior: smooth; }
-        .bubble { max-width: 85%; padding: 14px 18px; border-radius: 22px; margin-bottom: 12px; font-size: 15px; line-height: 1.5; box-shadow: 0 2px 5px rgba(0,0,0,0.03); animation: slideIn 0.3s ease; }
+        
+        /* Contenedor del Chat Ajustado */
+        .chat-container { 
+            height: 100%; 
+            overflow-y: auto; 
+            scroll-behavior: smooth; 
+            -webkit-overflow-scrolling: touch; /* Suavidad en iOS */
+        }
+        
+        .bubble { 
+            max-width: 85%; padding: 14px 18px; border-radius: 22px; margin-bottom: 12px; 
+            font-size: 15px; line-height: 1.5; box-shadow: 0 1px 2px rgba(0,0,0,0.05); 
+            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
+        }
         @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .lucia { background: #ffffff; color: #1d1d1f; align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid rgba(0,0,0,0.05); }
+        
+        .lucia { background: #ffffff; color: #1d1d1f; align-self: flex-start; border-bottom-left-radius: 4px; }
         .user { background: #007AFF; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+
+        /* Animación de carga */
         .typing-dot { width: 6px; height: 6px; background: #8e8e93; border-radius: 50%; animation: typing 1.4s infinite ease-in-out both; }
         .typing-dot:nth-child(1) { animation-delay: -0.32s; }
         .typing-dot:nth-child(2) { animation-delay: -0.16s; }
         @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+        /* Ocultar Scrollbar visualmente pero permitir scroll */
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .ws-button { background: #34C759; color: white; padding: 16px; border-radius: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 15px; box-shadow: 0 8px 20px rgba(52, 199, 89, 0.25); cursor: pointer; transition: transform 0.2s; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Botones y UI */
+        .ws-button { 
+            background: #34C759; color: white; padding: 16px; border-radius: 18px; font-weight: 600; 
+            display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 15px; width: 100%;
+            box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3); cursor: pointer; transition: transform 0.2s; 
+        }
         .ws-button:active { transform: scale(0.96); }
-        .quick-btn { border: 1px solid #007AFF; color: #007AFF; background: rgba(255,255,255,0.95); padding: 9px 18px; border-radius: 25px; font-size: 14px; font-weight: 600; margin-right: 6px; margin-top: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px); }
+        
+        .quick-btn { 
+            border: 1px solid #007AFF; color: #007AFF; background: rgba(255,255,255,0.9); 
+            padding: 9px 18px; border-radius: 25px; font-size: 14px; font-weight: 500; 
+            margin-right: 6px; margin-top: 8px; cursor: pointer; transition: all 0.2s; 
+        }
         .quick-btn:active { background: #007AFF; color: white; transform: scale(0.95); }
+        
         .view-hidden { display: none !important; }
-        .admin-trigger { cursor: pointer; padding: 15px; opacity: 0.3; transition: opacity 0.3s; }
-        .admin-trigger:hover { opacity: 1; }
-        .crm-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 60; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
-        .crm-modal.active { opacity: 1; pointer-events: auto; }
-        .crm-card { background: white; width: 95%; max-width: 600px; max-height: 85vh; border-radius: 32px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .admin-trigger { cursor: pointer; padding: 20px; opacity: 0.1; } /* Casi invisible */
+        .admin-trigger:active { opacity: 0.5; }
+
+        /* Modal y Card */
+        .app-card {
+            width: 100%; max-width: 450px; background: #fbfbfd; 
+            height: 100vh; /* Móvil completo */
+            max-height: 100vh;
+            display: flex; flex-direction: column; overflow: hidden; position: relative;
+        }
+        
+        /* En escritorio se ve como un iPhone flotante */
+        @media (min-width: 768px) {
+            .app-card {
+                height: 85vh; max-height: 800px;
+                border-radius: 40px;
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+                border: 4px solid #fff;
+            }
+        }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen">
+<body class="flex items-center justify-center min-h-screen bg-gray-100">
 
     <!-- VISTA 1: CHAT CLIENTE -->
-    <div id="client-view" class="w-full max-w-md bg-[#fbfbfd] md:rounded-[45px] shadow-2xl h-screen md:h-[94vh] flex flex-col overflow-hidden border border-white/50 relative">
-        <div class="bg-white/80 backdrop-blur-xl p-5 flex items-center gap-4 z-20 border-b border-gray-200/50 sticky top-0">
+    <div id="client-view" class="app-card">
+        <!-- Header -->
+        <div class="bg-white/80 backdrop-blur-md p-4 flex items-center gap-4 z-20 border-b border-gray-200 sticky top-0">
             <div class="relative">
                 <img src="https://img.freepik.com/free-photo/portrait-young-businesswoman-holding-eyeglasses-hand-against-gray-background_23-2148029483.jpg?w=200" 
                      class="w-12 h-12 rounded-full object-cover border border-gray-100 shadow-sm" alt="Lucía">
                 <span id="db-status-dot" class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></span>
             </div>
             <div class="flex-grow">
-                <h1 class="text-[18px] font-bold text-gray-900 tracking-tight">Lucía</h1>
-                <p class="text-[12px] text-green-600 font-bold uppercase tracking-wider">Asistente en línea</p>
+                <h1 class="text-[17px] font-bold text-gray-900 leading-tight">Lucía</h1>
+                <p class="text-[12px] text-green-600 font-semibold">Asistente en línea</p>
             </div>
         </div>
 
-        <div id="chat-box" class="chat-container p-6 flex flex-col flex-grow overflow-y-auto no-scrollbar bg-[#f5f5f7]">
+        <!-- Chat -->
+        <div id="chat-box" class="chat-container p-5 flex-grow no-scrollbar bg-[#f5f5f7]">
             <div class="bubble lucia shadow-sm">
-                ¡Hola! 😊 Es un placer saludarle. Soy <b>Lucía</b>, su asistente personal.<br><br>
+                ¡Hola! 😊 Soy <b>Lucía</b>, su asistente personal.<br><br>
                 <b>¿Con quién tengo el gusto de hablar?</b>
             </div>
         </div>
 
-        <div id="loading" class="px-8 py-2 hidden">
-            <div class="bg-gray-200/60 inline-flex items-center gap-1.5 px-4 py-2 rounded-full">
+        <!-- Loading -->
+        <div id="loading" class="px-6 py-2 hidden bg-[#f5f5f7]">
+            <div class="bg-gray-200 inline-flex items-center gap-1.5 px-4 py-2 rounded-full">
                 <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
             </div>
         </div>
 
-        <div class="p-5 bg-white/80 backdrop-blur-xl border-t border-gray-200/50">
-            <div class="flex items-center gap-2">
-                <div class="flex-grow bg-gray-100/80 rounded-full border border-transparent focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                    <input id="user-input" type="text" placeholder="Escribe su mensaje aquí..." class="w-full bg-transparent px-5 py-3 outline-none text-[16px] text-gray-800 placeholder-gray-400">
+        <!-- Input Area -->
+        <div class="p-4 bg-white border-t border-gray-200">
+            <div class="flex items-center gap-2 mb-2">
+                <div class="flex-grow bg-gray-100 rounded-full border border-transparent focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                    <input id="user-input" type="text" placeholder="Escribe aquí..." class="w-full bg-transparent px-5 py-3 outline-none text-[16px] text-gray-800 placeholder-gray-400 rounded-full">
                 </div>
                 <button id="send-btn" class="bg-[#007AFF] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 pl-0.5"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>
                 </button>
             </div>
-            <p class="text-center text-[10px] text-gray-400 mt-3 font-medium select-none">
-                <span class="admin-trigger" onclick="openLoginModal()">SmartLeads</span> • Conexión Segura
+            <p class="text-center text-[10px] text-gray-400 select-none">
+                <span class="admin-trigger" onclick="openLoginModal()">SmartLeads</span> • Seguro
             </p>
         </div>
     </div>
 
-    <!-- MODAL LOGIN -->
-    <div id="login-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-[32px] shadow-2xl p-8 w-full max-w-xs transform transition-all">
+    <!-- MODAL LOGIN (ADMIN) -->
+    <div id="login-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-xs transform transition-all">
             <div class="text-center mb-6">
-                <div class="mx-auto w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center mb-4 text-blue-600 font-bold text-xl tracking-tighter">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                </div>
-                <h3 class="text-xl font-black text-gray-900">Acceso Admin</h3>
-                <p class="text-sm text-gray-500">Credenciales Encriptadas</p>
+                <h3 class="text-xl font-bold text-gray-900">Acceso Admin</h3>
+                <p class="text-sm text-gray-500">Solo personal autorizado</p>
             </div>
-            <input type="email" id="admin-email" class="w-full border-b-2 border-gray-100 py-3 px-2 mb-3 focus:border-blue-500 outline-none text-gray-700 bg-transparent" placeholder="Correo Admin">
-            <input type="password" id="admin-pass" class="w-full border-b-2 border-gray-100 py-3 px-2 mb-6 focus:border-blue-500 outline-none text-gray-700 bg-transparent" placeholder="Contraseña">
-            <div class="grid grid-cols-2 gap-4">
-                <button onclick="closeLoginModal()" class="py-3 rounded-2xl bg-gray-100 text-gray-600 font-bold active:scale-95 transition-transform">Cancelar</button>
-                <button onclick="performLogin()" class="py-3 rounded-2xl bg-blue-600 text-white font-bold shadow-lg active:scale-95 transition-transform">Entrar</button>
+            <!-- Correo vacío para seguridad -->
+            <input type="email" id="admin-email" class="w-full border-b border-gray-200 py-3 px-2 mb-3 focus:border-blue-500 outline-none text-gray-800" placeholder="Correo electrónico">
+            <input type="password" id="admin-pass" class="w-full border-b border-gray-200 py-3 px-2 mb-6 focus:border-blue-500 outline-none text-gray-800" placeholder="Contraseña">
+            
+            <div class="flex gap-3">
+                <button onclick="closeLoginModal()" class="flex-1 py-3 rounded-xl bg-gray-100 text-gray-600 font-bold active:scale-95 transition-transform">Cancelar</button>
+                <button onclick="performLogin()" class="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold shadow-lg active:scale-95 transition-transform">Entrar</button>
             </div>
             <p id="login-error" class="text-center text-xs text-red-500 mt-4 hidden font-bold"></p>
         </div>
     </div>
 
     <!-- PANEL ADMIN -->
-    <div id="admin-view" class="w-full max-w-6xl bg-white shadow-2xl min-h-[92vh] flex-col overflow-hidden rounded-[40px] border border-gray-200 view-hidden">
-        <div class="bg-slate-900 p-6 text-white flex flex-wrap justify-between items-center gap-4">
-            <h1 class="text-2xl font-black tracking-tight">SmartLeads CRM</h1>
-            <div class="flex items-center gap-3">
-                <button onclick="showAdminTab('leads')" id="tab-leads" class="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg">Leads</button>
-                <button onclick="showAdminTab('training')" id="tab-training" class="bg-slate-700 hover:bg-slate-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold">Entrenar IA</button>
-                <button onclick="logoutAdmin()" class="bg-red-500/10 text-red-400 hover:bg-red-500/20 px-4 py-2 rounded-xl text-sm font-bold ml-4">Cerrar Sesión</button>
+    <div id="admin-view" class="w-full max-w-6xl bg-white md:rounded-[30px] shadow-2xl h-screen md:h-[90vh] flex flex-col overflow-hidden border border-gray-200 view-hidden relative">
+        <div class="bg-slate-900 p-5 text-white flex flex-wrap justify-between items-center gap-4">
+            <h1 class="text-xl font-bold tracking-tight">SmartLeads CRM</h1>
+            <div class="flex items-center gap-2">
+                <button onclick="showAdminTab('leads')" id="tab-leads" class="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-bold shadow-lg">Leads</button>
+                <button onclick="showAdminTab('training')" id="tab-training" class="bg-slate-700 hover:bg-slate-600 text-white px-5 py-2 rounded-lg text-sm font-bold">IA</button>
+                <button onclick="logoutAdmin()" class="bg-red-500/20 text-red-300 hover:bg-red-500/30 px-4 py-2 rounded-lg text-xs font-bold ml-2">Salir</button>
             </div>
         </div>
-        <div id="section-leads" class="flex-grow p-0 overflow-y-auto max-h-[80vh]">
+        
+        <!-- Lista de Leads -->
+        <div id="section-leads" class="flex-grow overflow-y-auto bg-white">
             <table class="w-full text-left border-collapse">
-                <thead class="bg-gray-50 sticky top-0 z-10">
-                    <tr class="text-gray-400 border-b border-gray-100 text-[11px] uppercase font-black tracking-widest">
-                        <th class="p-5 w-40">Fecha</th>
-                        <th class="p-5 w-32">Estado</th>
-                        <th class="p-5">Prospecto</th>
-                        <th class="p-5 text-right">Ficha</th>
+                <thead class="bg-gray-50 sticky top-0 shadow-sm z-10">
+                    <tr class="text-gray-400 border-b border-gray-100 text-[11px] uppercase font-bold tracking-wider">
+                        <th class="p-4 w-24">Fecha</th>
+                        <th class="p-4 w-20">Estado</th>
+                        <th class="p-4">Info</th>
+                        <th class="p-4 text-right">Ver</th>
                     </tr>
                 </thead>
                 <tbody id="leads-table-body" class="divide-y divide-gray-50"></tbody>
             </table>
         </div>
-        <div id="section-training" class="flex-grow p-10 bg-gray-50 overflow-y-auto hidden">
-            <div class="max-w-4xl mx-auto">
-                <div class="bg-white p-8 rounded-[35px] border border-gray-100 shadow-sm">
-                    <h2 class="text-2xl font-black text-gray-900 mb-6">Guion de Lucía</h2>
-                    <textarea id="prompt-editor" class="w-full h-80 p-6 border-2 border-gray-100 rounded-[25px] font-sans text-[16px] leading-relaxed bg-slate-50 focus:bg-white outline-none shadow-inner"></textarea>
-                    <div class="mt-8 flex justify-end">
-                        <button onclick="savePrompt()" class="bg-purple-600 hover:bg-purple-700 text-white px-10 py-4 rounded-2xl font-black shadow-xl transition-transform active:scale-95">Guardar Entrenamiento</button>
-                    </div>
+
+        <!-- Entrenamiento -->
+        <div id="section-training" class="flex-grow p-6 bg-gray-50 overflow-y-auto hidden">
+            <div class="max-w-3xl mx-auto bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Guion de Ventas</h2>
+                <textarea id="prompt-editor" class="w-full h-80 p-4 border border-gray-200 rounded-xl font-sans text-sm leading-relaxed focus:border-blue-500 outline-none resize-none"></textarea>
+                <div class="mt-4 flex justify-end">
+                    <button onclick="savePrompt()" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">Guardar</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL DETALLE -->
-    <div id="lead-detail-modal" class="crm-modal">
-        <div class="crm-card">
-            <div class="bg-slate-50 p-6 border-b border-gray-100 flex justify-between items-center">
-                <h3 class="text-xl font-black text-gray-900">Resumen del Lead</h3>
-                <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600 bg-white p-2 rounded-full shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></button>
+    <!-- MODAL DETALLE LEAD -->
+    <div id="lead-detail-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden">
+            <div class="bg-slate-50 p-5 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-gray-900">Ficha del Prospecto</h3>
+                <button onclick="closeDetailModal()" class="bg-white p-2 rounded-full shadow-sm text-gray-400 hover:text-gray-600">✕</button>
             </div>
-            <div class="p-8 bg-white flex-grow overflow-y-auto">
-                <div id="detail-summary" class="text-[17px] text-slate-800 bg-blue-50/50 p-6 rounded-[25px] border border-blue-100 leading-relaxed font-medium whitespace-pre-line shadow-sm">Cargando análisis...</div>
-                <div class="mt-6">
-                    <button onclick="toggleHistory()" class="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 hover:text-blue-500">Ver Chat Completo &darr;</button>
-                    <div id="detail-history" class="hidden mt-4 space-y-2 pl-4 border-l-2 border-gray-100 max-h-[200px] overflow-y-auto text-xs text-gray-500"></div>
-                </div>
+            <div class="p-6 overflow-y-auto bg-white flex-grow">
+                <div id="detail-summary" class="text-sm text-slate-700 bg-blue-50 p-5 rounded-2xl border border-blue-100 leading-relaxed font-medium whitespace-pre-line">Cargando...</div>
+                <button onclick="toggleHistory()" class="mt-6 text-xs font-bold text-gray-400 uppercase tracking-wider w-full text-left">Ver Chat Completo ▼</button>
+                <div id="detail-history" class="hidden mt-3 space-y-2 text-xs text-gray-500 pl-3 border-l-2 border-gray-100"></div>
             </div>
-            <div class="p-6 border-t bg-gray-50"><button onclick="window.open(`tel:${JORGE_PHONE}`)" class="w-full bg-green-600 text-white py-4 rounded-[20px] font-bold shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2">📞 Llamar Ahora</button></div>
+            <div class="p-5 border-t border-gray-100 bg-gray-50">
+                <button onclick="window.open(`tel:${JORGE_PHONE}`)" class="w-full bg-green-600 text-white py-3.5 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">📞 Llamar Ahora</button>
+            </div>
         </div>
     </div>
 
@@ -153,17 +204,15 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, updateDoc, serverTimestamp, collection, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- SEGURIDAD: LLAVE DIVIDIDA ---
-        const P1 = "AIzaSyCjhXpHtovaqye6"; 
-        const P2 = "O4r2ir2tT5lksOIrNfs"; // Restored original working key
+        // CLAVES
+        const P1 = "AIzaSyCPDuual8XBejuV"; const P2 = "UPbKecfonbIh6SNolDk";
         const API_KEY = P1 + P2;
-        
         const JORGE_PHONE = "14079553077";
         const isInCanvas = typeof __firebase_config !== 'undefined';
         const MODEL_NAME = isInCanvas ? "gemini-2.5-flash-preview-09-2025" : "gemini-1.5-flash";
         const sessionId = crypto.randomUUID();
 
-        // TU FIREBASE REAL (LuciaAI)
+        // CONFIG FIREBASE REAL
         const myFirebaseConfig = {
             apiKey: "AIzaSyA_-x6UEEVEJ7uAY8ohCrDussZ938QQ0B0",
             authDomain: "luciaai-46c75.firebaseapp.com",
@@ -176,19 +225,13 @@
 
         let chatHistory = []; let currentUser = null; let stepCount = 0;
         let db, app, auth, appId; let useLocalStorage = false;
-
-        const DEFAULT_PROMPT = `Eres Lucía, Asistente Inteligente del Portal de Beneficios.
-OBJETIVO: Calificar prospectos cálidamente.
-FLUJO: 1. Nombre. 2. Tratamiento. 3. Dolor. 4. Salud. 5. Walmart. 6. Cierre.
-Reglas: No precios fijos. Usa **negritas**. Finaliza con [CONECTAR_JORGE].`;
-
+        const DEFAULT_PROMPT = `Eres Lucía, Asistente Inteligente.`;
         let currentSystemPrompt = DEFAULT_PROMPT;
 
         try {
             if (myFirebaseConfig.apiKey) {
                 app = initializeApp(myFirebaseConfig); appId = 'smartleads-prod'; 
                 auth = getAuth(app); db = getFirestore(app);
-                console.log("✅ Conectado a LuciaAI");
             } else if (isInCanvas) {
                 app = initializeApp(JSON.parse(__firebase_config)); appId = 'smartleads-app';
                 auth = getAuth(app); db = getFirestore(app);
@@ -199,7 +242,7 @@ Reglas: No precios fijos. Usa **negritas**. Finaliza con [CONECTAR_JORGE].`;
             useLocalStorage = true; currentUser = { uid: 'local' };
             const dot = document.getElementById('db-status-dot');
             if(dot) dot.classList.replace('bg-green-500', 'bg-red-500');
-            saveLocalLead({ startedAt: new Date().toISOString(), lastMessage: 'Modo Local', status: 'Navegando', summary: 'Pendiente...' });
+            saveLocalLead({ startedAt: new Date().toISOString(), lastMessage: 'Modo Local', status: 'Navegando', summary: '...' });
             loadSettings();
         }
 
@@ -208,10 +251,7 @@ Reglas: No precios fijos. Usa **negritas**. Finaliza con [CONECTAR_JORGE].`;
             try {
                 if (isInCanvas && !myFirebaseConfig.apiKey) await signInWithCustomToken(auth, __initial_auth_token);
                 else await signInAnonymously(auth);
-            } catch (error) { 
-                console.warn("Auth Anónimo falló.");
-                setupLocalMode();
-            }
+            } catch (error) { setupLocalMode(); }
         };
 
         if (!useLocalStorage) {
@@ -220,132 +260,87 @@ Reglas: No precios fijos. Usa **negritas**. Finaliza con [CONECTAR_JORGE].`;
                     currentUser = user; 
                     if (user.isAnonymous) {
                         loadSettings();
-                        setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), { startedAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: 'Sesión iniciada', status: 'Navegando', summary: 'Pendiente...' }, { merge: true });
+                        try { setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), { startedAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: 'Sesión iniciada', status: 'Navegando', summary: '...' }, { merge: true }); } catch(e){setupLocalMode();}
                     }
                 } else initAuth();
             });
         } else { initAuth(); }
 
-        // --- AUTH ADMIN REAL ---
-        window.openLoginModal = () => {
-            if (currentUser && !currentUser.isAnonymous) { switchView('admin'); return; }
-            document.getElementById('login-modal').classList.remove('hidden'); 
-        };
+        window.openLoginModal = () => { if (currentUser && !currentUser.isAnonymous) { switchView('admin'); return; } document.getElementById('login-modal').classList.remove('hidden'); };
         window.closeLoginModal = () => document.getElementById('login-modal').classList.add('hidden');
-        
         window.performLogin = async () => {
-            const email = document.getElementById('admin-email').value;
-            const pass = document.getElementById('admin-pass').value;
-            const errorMsg = document.getElementById('login-error');
-            
-            if(useLocalStorage) {
-                if(pass === "123456") { closeLoginModal(); switchView('admin'); } 
-                else { errorMsg.innerText = "Modo Local: Usa 123456"; errorMsg.classList.remove('hidden'); }
-                return;
-            }
-
-            try {
-                await signInWithEmailAndPassword(auth, email, pass);
-                closeLoginModal();
-                switchView('admin');
-            } catch (error) {
-                errorMsg.innerText = "Error: Verifica tu correo/contraseña en Firebase.";
-                errorMsg.classList.remove('hidden');
-            }
+            const email = document.getElementById('admin-email').value; const pass = document.getElementById('admin-pass').value;
+            if(useLocalStorage) { if(pass==="123456"){closeLoginModal(); switchView('admin');} else alert("Modo Local: 123456"); return; }
+            try { await signInWithEmailAndPassword(auth, email, pass); closeLoginModal(); switchView('admin'); } catch (error) { document.getElementById('login-error').innerText = "Credenciales incorrectas"; document.getElementById('login-error').classList.remove('hidden'); }
         };
+        window.logoutAdmin = async () => { await signOut(auth); await signInAnonymously(auth); switchView('client'); };
 
-        window.logoutAdmin = async () => {
-            await signOut(auth);
-            await signInAnonymously(auth);
-            switchView('client');
-        };
-
-        // --- CRM ---
         async function loadSettings() {
             if (useLocalStorage) { currentSystemPrompt = localStorage.getItem('lucia_prompt') || DEFAULT_PROMPT; }
-            else {
-                try {
-                    const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'));
-                    if (snap.exists() && snap.data().prompt) currentSystemPrompt = snap.data().prompt;
-                } catch (e) {}
-            }
+            else { try { const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config')); if (snap.exists()) currentSystemPrompt = snap.data().prompt; } catch (e) {} }
             document.getElementById('prompt-editor').value = currentSystemPrompt;
         }
 
         window.savePrompt = async () => {
-            const val = document.getElementById('prompt-editor').value;
-            currentSystemPrompt = val;
+            const val = document.getElementById('prompt-editor').value; currentSystemPrompt = val;
             if (useLocalStorage) localStorage.setItem('lucia_prompt', val);
-            else await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { prompt: val }, { merge: true });
-            alert("✅ Cerebro actualizado.");
+            else { try { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { prompt: val }, { merge: true }); alert("✅ Guardado"); } catch (e) { alert("⚠️ Error: Solo Admin."); } }
         };
 
         window.switchView = (v) => {
-            document.getElementById('admin-view').classList.toggle('view-hidden', v !== 'admin');
-            document.getElementById('client-view').classList.toggle('view-hidden', v === 'admin');
-            if(v === 'admin') { document.getElementById('admin-view').classList.add('flex'); loadLeads(); }
+            const admin = document.getElementById('admin-view'); const client = document.getElementById('client-view');
+            if(v === 'admin') { client.classList.add('view-hidden'); admin.classList.remove('view-hidden'); admin.classList.add('flex'); loadLeads(); }
+            else { admin.classList.add('view-hidden'); admin.classList.remove('flex'); client.classList.remove('view-hidden'); }
         };
-
-        window.showAdminTab = (t) => {
-            document.getElementById('section-leads').classList.toggle('hidden', t !== 'leads');
-            document.getElementById('section-training').classList.toggle('hidden', t !== 'training');
-        };
-
+        window.showAdminTab = (t) => { document.getElementById('section-leads').classList.toggle('hidden', t !== 'leads'); document.getElementById('section-training').classList.toggle('hidden', t !== 'training'); };
+        
         window.openDetailModal = async (id) => {
-            document.getElementById('lead-detail-modal').classList.add('active');
+            document.getElementById('lead-detail-modal').classList.remove('hidden'); document.getElementById('lead-detail-modal').classList.add('flex');
             let data;
-            if (useLocalStorage) data = JSON.parse(localStorage.getItem('sl_leads_data') || '{}')[id];
-            else { const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', id)); if(snap.exists()) data = snap.data(); }
-            if (data) {
+            if(useLocalStorage) data = JSON.parse(localStorage.getItem('sl_leads_data')||'{}')[id];
+            else { const s = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', id)); if(s.exists()) data = s.data(); }
+            if(data) {
                 document.getElementById('detail-summary').innerText = data.summary || "Generando...";
-                document.getElementById('detail-history').innerHTML = Object.values(data.history || {}).sort((a,b)=>a.ts-b.ts).map(m => `<div>${m.role}: ${m.text}</div>`).join('');
+                document.getElementById('detail-history').innerHTML = Object.values(data.history||{}).sort((a,b)=>a.ts-b.ts).map(m=>`<div><b>${m.role}:</b> ${m.text}</div>`).join('');
             }
         };
-        window.closeDetailModal = () => document.getElementById('lead-detail-modal').classList.remove('active');
+        window.closeDetailModal = () => { document.getElementById('lead-detail-modal').classList.add('hidden'); document.getElementById('lead-detail-modal').classList.remove('flex'); };
+        window.toggleHistory = () => document.getElementById('detail-history').classList.toggle('hidden');
 
         function loadLeads() {
             const tbody = document.getElementById('leads-table-body');
             const render = (leads) => {
                 tbody.innerHTML = leads.map(l => {
-                    const ts = l.updatedAt?.seconds * 1000 || l.updatedAt;
-                    const date = new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                    let name = l.summary?.split("Nombre:")[1]?.split("\n")[0] || "Prospecto";
-                    return `<tr class="border-b border-gray-50"><td class="p-5 font-mono text-[10px]">${date}</td><td class="p-5 font-bold text-[10px]">${l.status}</td><td class="p-5 font-bold">${name}</td><td class="p-5 text-right"><button onclick="openDetailModal('${l.id}')" class="text-blue-600 font-black">Ver</button></td></tr>`;
+                    const d = new Date(l.updatedAt?.seconds*1000 || l.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                    const name = l.summary?.split("Nombre:")[1]?.split("\n")[0] || "Prospecto";
+                    return `<tr class="border-b border-gray-100 hover:bg-gray-50"><td class="p-4 text-[10px] text-gray-400 font-mono">${d}</td><td class="p-4 font-bold text-[10px] text-slate-500">${l.status}</td><td class="p-4 text-sm font-bold text-slate-800">${name}</td><td class="p-4 text-right"><button onclick="openDetailModal('${l.id}')" class="text-blue-600 font-bold text-xs bg-blue-50 px-3 py-1 rounded">Ver</button></td></tr>`;
                 }).join('');
             };
-            if (useLocalStorage) render(getLocalLeads());
-            else onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'leads'), snap => {
-                let data = []; snap.forEach(d => data.push({id:d.id, ...d.data()}));
-                render(data.sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0)));
+            if(useLocalStorage) render(getLocalLeads());
+            else onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'leads'), s => {
+                let d=[]; s.forEach(x=>d.push({id:x.id, ...x.data()})); render(d.sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0)));
             });
         }
 
         async function save(txt, role, status = null) {
             const data = { lastMessage: txt, [`history.${Date.now()}`]: { role, text: txt, ts: Date.now() }, updatedAt: useLocalStorage ? Date.now() : serverTimestamp() };
             if(status) data.status = status;
-            if(useLocalStorage) { saveLocalLead(data); }
-            else if (currentUser) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), data);
+            if(useLocalStorage) saveLocalLead(data);
+            else if(currentUser) try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), data); } catch(e){saveLocalLead(data);}
         }
 
         async function analyzeLead() {
             const models = ["gemini-2.5-flash-preview-09-2025", "gemini-1.5-flash"];
-            const prompt = "Analiza el chat y resume en 3 lineas: Nombre, Dolor, Salud y Presupuesto.";
-            for (const model of models) {
+            const prompt = "Analiza chat. Resume 3 lineas: Nombre, Dolor, Salud, Presupuesto.";
+            for (const m of models) {
                 try {
-                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ contents: [...chatHistory, { role: "user", parts: [{ text: prompt }] }] })
-                    });
-                    if (!res.ok) continue;
-                    const data = await res.json();
-                    const summary = data.candidates[0].content.parts[0].text;
-                    if (useLocalStorage) { 
-                        saveLocalLead({ summary });
-                    } else {
-                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), { summary });
-                    }
+                    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${API_KEY}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ contents: [...chatHistory, { role: "user", parts: [{ text: prompt }] }] }) });
+                    if(!r.ok) continue;
+                    const d = await r.json();
+                    const s = d.candidates[0].content.parts[0].text;
+                    if(useLocalStorage) saveLocalLead({summary:s}); else await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), {summary:s});
                     break;
-                } catch (e) {}
+                } catch(e){}
             }
         }
 
@@ -357,7 +352,7 @@ Reglas: No precios fijos. Usa **negritas**. Finaliza con [CONECTAR_JORGE].`;
             document.getElementById('chat-box').appendChild(div);
             div.scrollIntoView({ behavior: 'smooth' });
             if (isClosing) {
-                const b = document.createElement('div'); b.className = "ws-button"; b.innerHTML = "Hablar con Jorge por WhatsApp";
+                const b = document.createElement('div'); b.className = "ws-button"; b.innerHTML = "<span>Hablar con Jorge por WhatsApp</span>";
                 b.onclick = () => window.open(`https://wa.me/${JORGE_PHONE}?text=Hola Jorge...`);
                 document.getElementById('chat-box').appendChild(b);
                 save(clean, role, '🔥 CALIENTE'); analyzeLead();
@@ -366,25 +361,22 @@ Reglas: No precios fijos. Usa **negritas**. Finaliza con [CONECTAR_JORGE].`;
 
         async function sendMessage(manualText = null) {
             const text = manualText || document.getElementById('user-input').value.trim();
-            if (!text || (!useLocalStorage && !currentUser)) return;
+            if (!text) return;
             append('user', text); document.getElementById('user-input').value = '';
             document.getElementById('loading').classList.remove('hidden');
             stepCount++; chatHistory.push({ role: "user", parts: [{ text }] });
             
             const models = ["gemini-2.5-flash-preview-09-2025", "gemini-1.5-flash"];
             let success = false;
-            for (const model of models) {
+            for (const m of models) {
                 try {
-                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ contents: chatHistory, systemInstruction: { parts: [{ text: currentSystemPrompt }] } })
-                    });
-                    if (!res.ok) continue;
-                    const data = await res.json();
-                    const aiTxt = data.candidates[0].content.parts[0].text;
+                    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${API_KEY}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ contents: chatHistory, systemInstruction: { parts: [{ text: currentSystemPrompt }] } }) });
+                    if(!r.ok) continue;
+                    const d = await r.json();
+                    const t = d.candidates[0].content.parts[0].text;
                     document.getElementById('loading').classList.add('hidden');
-                    append('lucia', aiTxt); chatHistory.push({ role: "model", parts: [{ text: aiTxt }] });
-                    if (stepCount === 1) { 
+                    append('lucia', t); chatHistory.push({ role: "model", parts: [{ text: t }] });
+                    if(stepCount === 1) {
                         const c = document.createElement('div'); c.className = "flex flex-wrap mt-1 mb-6";
                         ['Señor', 'Señora', 'Srta'].forEach(val => {
                             const b = document.createElement('button'); b.className = "quick-btn"; b.innerText = val;
@@ -396,11 +388,13 @@ Reglas: No precios fijos. Usa **negritas**. Finaliza con [CONECTAR_JORGE].`;
                     success = true; break; 
                 } catch (e) {}
             }
-            if (!success) { document.getElementById('loading').classList.add('hidden'); append('lucia', "Hipo técnico. Inténtalo de nuevo."); }
+            if(!success) { document.getElementById('loading').classList.add('hidden'); append('lucia', "Hipo técnico. Inténtalo de nuevo."); }
         }
 
         document.getElementById('send-btn').addEventListener('click', () => sendMessage());
         document.getElementById('user-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+        function saveLocalLead(data) { const l = JSON.parse(localStorage.getItem('sl_leads_data')||'{}'); l[sessionId] = {...l[sessionId], ...data, id:sessionId, updatedAt:new Date().toISOString()}; localStorage.setItem('sl_leads_data', JSON.stringify(l)); }
+        function getLocalLeads() { return Object.values(JSON.parse(localStorage.getItem('sl_leads_data')||'{}')).sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt)); }
     </script>
 </body>
 </html>
