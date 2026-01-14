@@ -9,68 +9,35 @@
     <style>
         /* --- ESTILOS PREMIUM --- */
         body { font-family: 'Inter', sans-serif; background-color: #f2f2f7; color: #1d1d1f; -webkit-tap-highlight-color: transparent; }
-        
         .chat-container { height: 100%; overflow-y: auto; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
-        
-        .bubble { 
-            max-width: 85%; padding: 14px 18px; border-radius: 22px; margin-bottom: 12px; 
-            font-size: 15px; line-height: 1.5; box-shadow: 0 1px 2px rgba(0,0,0,0.05); 
-            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
-        }
+        .bubble { max-width: 85%; padding: 14px 18px; border-radius: 22px; margin-bottom: 12px; font-size: 15px; line-height: 1.5; box-shadow: 0 1px 2px rgba(0,0,0,0.05); animation: slideIn 0.3s ease-out; }
         @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
         .lucia { background: #ffffff; color: #1d1d1f; align-self: flex-start; border-bottom-left-radius: 4px; }
         .user { background: #007AFF; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
-
         .typing-dot { width: 6px; height: 6px; background: #8e8e93; border-radius: 50%; animation: typing 1.4s infinite ease-in-out both; }
         .typing-dot:nth-child(1) { animation-delay: -0.32s; }
         .typing-dot:nth-child(2) { animation-delay: -0.16s; }
         @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
-
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        .ws-button { 
-            background: #34C759; color: white; padding: 16px; border-radius: 18px; font-weight: 600; 
-            display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 15px; width: 100%;
-            box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3); cursor: pointer; transition: transform 0.2s; 
-        }
+        .ws-button { background: #34C759; color: white; padding: 16px; border-radius: 18px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 15px; width: 100%; box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3); cursor: pointer; transition: transform 0.2s; }
         .ws-button:active { transform: scale(0.96); }
-        
-        .quick-btn { 
-            border: 1px solid #007AFF; color: #007AFF; background: rgba(255,255,255,0.9); 
-            padding: 9px 18px; border-radius: 25px; font-size: 14px; font-weight: 500; 
-            margin-right: 6px; margin-top: 8px; cursor: pointer; transition: all 0.2s; 
-        }
+        .quick-btn { border: 1px solid #007AFF; color: #007AFF; background: rgba(255,255,255,0.9); padding: 9px 18px; border-radius: 25px; font-size: 14px; font-weight: 500; margin-right: 6px; margin-top: 8px; cursor: pointer; transition: all 0.2s; }
         .quick-btn:active { background: #007AFF; color: white; transform: scale(0.95); }
-        
-        /* UI Admin */
         .view-hidden { display: none !important; }
-        .admin-trigger { cursor: pointer; padding: 20px; opacity: 0.1; } 
+        .admin-trigger { cursor: pointer; padding: 20px; opacity: 0.1; }
         .admin-trigger:active { opacity: 0.5; }
-
-        .app-card {
-            width: 100%; max-width: 450px; background: #fbfbfd; 
-            height: 100vh; max-height: 100vh;
-            display: flex; flex-direction: column; overflow: hidden; position: relative;
-        }
-        
-        @media (min-width: 768px) {
-            .app-card {
-                height: 85vh; max-height: 800px;
-                border-radius: 40px;
-                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-                border: 4px solid #fff;
-            }
-        }
-
+        .app-card { width: 100%; max-width: 450px; background: #fbfbfd; height: 100vh; max-height: 100vh; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        @media (min-width: 768px) { .app-card { height: 85vh; max-height: 800px; border-radius: 40px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 4px solid #fff; } }
         .tab-active { background-color: #007AFF; color: white; }
         .tab-inactive { background-color: white; color: #6b7280; border: 1px solid #e5e7eb; }
+        .crm-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 60; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .crm-modal.active { opacity: 1; pointer-events: auto; }
+        .crm-card { background: white; width: 95%; max-width: 550px; max-height: 85vh; border-radius: 30px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,0.3); }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen bg-gray-100">
 
-    <!-- CLIENTE -->
+    <!-- VISTA 1: CHAT CLIENTE -->
     <div id="client-view" class="app-card">
         <div class="bg-white/80 backdrop-blur-md p-4 flex items-center gap-4 z-20 border-b border-gray-200 sticky top-0">
             <div class="relative">
@@ -98,14 +65,15 @@
         </div>
 
         <div class="p-4 bg-white border-t border-gray-200">
-            <div class="flex items-center gap-2 mb-2">
+            <!-- Formulario de Chat (Maneja el Enter automáticamente) -->
+            <form id="chat-form" class="flex items-center gap-2 mb-2" autocomplete="off">
                 <div class="flex-grow bg-gray-100 rounded-full border border-transparent focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                    <input id="user-input" type="text" name="chat_message_input" autocomplete="off" placeholder="Escribe aquí..." class="w-full bg-transparent px-5 py-3 outline-none text-[16px] text-gray-800 placeholder-gray-400 rounded-full">
+                    <input id="user-input" type="text" name="message" autocomplete="off" placeholder="Escribe aquí..." class="w-full bg-transparent px-5 py-3 outline-none text-[16px] text-gray-800 placeholder-gray-400 rounded-full">
                 </div>
-                <button id="send-btn" class="bg-[#007AFF] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
+                <button type="submit" id="send-btn" class="bg-[#007AFF] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 pl-0.5"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>
                 </button>
-            </div>
+            </form>
             <p class="text-center text-[10px] text-gray-400 select-none">
                 <span class="admin-trigger" onclick="openLoginModal()">SmartLeads</span> • Conexión Segura
             </p>
@@ -119,12 +87,17 @@
                 <h3 class="text-xl font-bold text-gray-900">Acceso Admin</h3>
                 <p class="text-sm text-gray-500">Solo personal autorizado</p>
             </div>
-            <input type="email" id="admin-email" name="admin_email_field" autocomplete="username" class="w-full border-b border-gray-200 py-3 px-2 mb-3 focus:border-blue-500 outline-none text-gray-800" placeholder="Correo electrónico">
-            <input type="password" id="admin-pass" name="admin_password_field" autocomplete="current-password" class="w-full border-b border-gray-200 py-3 px-2 mb-6 focus:border-blue-500 outline-none text-gray-800" placeholder="Contraseña">
-            <div class="flex gap-3">
-                <button onclick="closeLoginModal()" class="flex-1 py-3 rounded-xl bg-gray-100 text-gray-600 font-bold active:scale-95 transition-transform">Cancelar</button>
-                <button onclick="performLogin()" class="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold shadow-lg active:scale-95 transition-transform">Entrar</button>
-            </div>
+            
+            <!-- Formulario de Login (Maneja el Enter automáticamente) -->
+            <form id="login-form">
+                <input type="email" id="admin-email" name="email" autocomplete="username" class="w-full border-b border-gray-200 py-3 px-2 mb-3 focus:border-blue-500 outline-none text-gray-800" placeholder="Correo electrónico">
+                <input type="password" id="admin-pass" name="password" autocomplete="current-password" class="w-full border-b border-gray-200 py-3 px-2 mb-6 focus:border-blue-500 outline-none text-gray-800" placeholder="Contraseña">
+                
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeLoginModal()" class="flex-1 py-3 rounded-xl bg-gray-100 text-gray-600 font-bold active:scale-95 transition-transform">Cancelar</button>
+                    <button type="submit" class="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold shadow-lg active:scale-95 transition-transform">Entrar</button>
+                </div>
+            </form>
             <p id="login-error" class="text-center text-xs text-red-500 mt-4 hidden font-bold"></p>
         </div>
     </div>
@@ -220,6 +193,7 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, updateDoc, serverTimestamp, collection, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // CLAVES
         const P1 = "AIzaSyCjhXpHtovaqye6"; const P2 = "O4r2ir2tT5lksOIrNfs";
         const API_KEY = P1 + P2;
         const JORGE_PHONE = "14079553077";
@@ -283,12 +257,18 @@
             });
         } else { initAuth(); }
 
+        // --- MANEJO DE FORMULARIOS ---
+        document.getElementById('chat-form')?.addEventListener('submit', (e) => { e.preventDefault(); sendMessage(); });
+        document.getElementById('login-form')?.addEventListener('submit', (e) => { e.preventDefault(); performLogin(); });
+
         window.openLoginModal = () => { if (currentUser && !currentUser.isAnonymous) { switchView('admin'); return; } document.getElementById('login-modal').classList.remove('hidden'); };
         window.closeLoginModal = () => document.getElementById('login-modal').classList.add('hidden');
+        
         window.performLogin = async () => {
             const email = document.getElementById('admin-email').value; const pass = document.getElementById('admin-pass').value;
-            if(useLocalStorage) { if(pass==="123456"){closeLoginModal(); switchView('admin');} else document.getElementById('login-error').innerText="Modo Local: 123456"; document.getElementById('login-error').classList.remove('hidden'); return; }
-            try { await signInWithEmailAndPassword(auth, email, pass); closeLoginModal(); switchView('admin'); } catch (error) { document.getElementById('login-error').innerText = "Credenciales incorrectas"; document.getElementById('login-error').classList.remove('hidden'); }
+            const errorMsg = document.getElementById('login-error');
+            if(useLocalStorage) { if(pass==="123456"){closeLoginModal(); switchView('admin');} else { errorMsg.innerText="Modo Local: 123456"; errorMsg.classList.remove('hidden'); } return; }
+            try { await signInWithEmailAndPassword(auth, email, pass); closeLoginModal(); switchView('admin'); } catch (error) { errorMsg.innerText = "Credenciales incorrectas"; errorMsg.classList.remove('hidden'); }
         };
 
         window.logoutAdmin = async () => { await signOut(auth); await signInAnonymously(auth); switchView('client'); };
@@ -492,8 +472,6 @@
             if(!success) { document.getElementById('loading').classList.add('hidden'); appendMessageBubble('lucia', "Hipo técnico. Inténtalo de nuevo.", false); }
         }
 
-        document.getElementById('send-btn').addEventListener('click', () => sendMessage());
-        document.querySelector('input[name="chat_message_input"]').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
         function saveLocalLead(data) { const l = JSON.parse(localStorage.getItem('sl_leads_data')||'{}'); l[sessionId] = {...l[sessionId], ...data, id:sessionId, updatedAt:new Date().toISOString()}; localStorage.setItem('sl_leads_data', JSON.stringify(l)); }
         function getLocalLeads() { return Object.values(JSON.parse(localStorage.getItem('sl_leads_data')||'{}')).sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt)); }
     </script>
