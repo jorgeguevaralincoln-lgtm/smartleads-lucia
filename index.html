@@ -120,11 +120,11 @@
             <div class="bubble lucia shadow-sm">
                 Hola, soy <b>Lucía</b>, su Asistente de beneficios. Mi labor es ayudarle a tomar decisiones acertadas para su familia. Toda su información es privada y nada se compartirá sin su permiso.<br><br>
                 <b>¿Desea continuar para conocer sus beneficios?</b>
-                <!-- Botones iniciales manuales -->
-                <div class="quick-actions-container">
-                    <button class="quick-btn" onclick="sendMessage('Sí, continuar')">Sí, continuar</button>
-                    <button class="quick-btn" onclick="sendMessage('No me interesa')">No me interesa</button>
-                </div>
+            </div>
+            <!-- Botones iniciales fuera de la burbuja -->
+            <div class="quick-actions-container">
+                <button class="quick-btn" onclick="sendMessage('Sí, continuar')">Sí, continuar</button>
+                <button class="quick-btn" onclick="sendMessage('No me interesa')">No me interesa</button>
             </div>
         </div>
 
@@ -571,16 +571,29 @@ Si dice "Tengo que hablar con mi esposa": Valida pero insiste en la salud de hoy
             }
         }
 
-        // --- BOTONES MANUALES ---
-        function detectContextAndShowButtons(text) {
-            const regex = /\[BOTONES:\s*(.*?)\]/i;
-            const match = text.match(regex);
+        function appendMessageBubble(role, text, shouldSave = true) {
+            const isClosing = text.includes("[CONECTAR_JORGE]");
+            let cleanText = text.replace("[CONECTAR_JORGE]", "");
+            let buttons = null;
+
+            if (role === 'lucia') {
+                const regex = /\[BOTONES:\s*(.*?)\]/i;
+                const match = cleanText.match(regex);
+                if (match) {
+                    buttons = match[1].split(',').map(s => s.trim());
+                    cleanText = cleanText.replace(regex, "").trim();
+                }
+            }
+
+            const div = document.createElement('div'); div.className = `bubble ${role} shadow-sm`;
+            div.innerHTML = cleanText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+            document.getElementById('chat-box').appendChild(div);
             
-            if (match) {
-                const options = match[1].split(',').map(s => s.trim());
+            // Render buttons AFTER bubble
+            if (buttons) {
                 const container = document.createElement('div');
                 container.className = "quick-actions-container";
-                options.forEach(opt => {
+                buttons.forEach(opt => {
                     const btn = document.createElement('button');
                     btn.className = "quick-btn";
                     btn.innerText = opt;
@@ -591,23 +604,8 @@ Si dice "Tengo que hablar con mi esposa": Valida pero insiste en la salud de hoy
                     container.appendChild(btn);
                 });
                 document.getElementById('chat-box').appendChild(container);
-                setTimeout(() => document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight, 100);
-                return text.replace(regex, "").trim();
-            }
-            return text;
-        }
-
-        function appendMessageBubble(role, text, shouldSave = true) {
-            const isClosing = text.includes("[CONECTAR_JORGE]");
-            let cleanText = text.replace("[CONECTAR_JORGE]", "");
-            
-            if (role === 'lucia') {
-                cleanText = detectContextAndShowButtons(cleanText); 
             }
 
-            const div = document.createElement('div'); div.className = `bubble ${role} shadow-sm`;
-            div.innerHTML = cleanText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
-            document.getElementById('chat-box').appendChild(div);
             div.scrollIntoView({ behavior: 'smooth' });
             
             if (isClosing) {
