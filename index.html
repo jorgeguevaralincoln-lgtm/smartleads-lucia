@@ -571,16 +571,44 @@ Si dice "Tengo que hablar con mi esposa": Valida pero insiste en la salud de hoy
             }
         }
 
+        // --- BOTONES MANUALES ---
+        function detectContextAndShowButtons(text) {
+            const regex = /\[BOTONES:\s*(.*?)\]/i;
+            const match = text.match(regex);
+            
+            if (match) {
+                // CLEANUP: Eliminamos asteriscos y otros caracteres markdown del texto de los botones
+                const options = match[1].split(',').map(s => s.replace(/[\*\_\[\]]/g, '').trim());
+                const container = document.createElement('div');
+                container.className = "quick-actions-container";
+                options.forEach(opt => {
+                    const btn = document.createElement('button');
+                    btn.className = "quick-btn";
+                    btn.innerText = opt;
+                    btn.onclick = () => {
+                        container.remove();
+                        sendMessage(opt);
+                    };
+                    container.appendChild(btn);
+                });
+                document.getElementById('chat-box').appendChild(container);
+                setTimeout(() => document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight, 100);
+                return text.replace(regex, "").trim();
+            }
+            return text;
+        }
+
         function appendMessageBubble(role, text, shouldSave = true) {
             const isClosing = text.includes("[CONECTAR_JORGE]");
-            let cleanText = text.replace("[CONECTAR_JORGE]", "");
+            let cleanText = text.replace("[CONECTAR_JORGE]", "").replace(/\[CALIENTE\]/g, "");
             let buttons = null;
 
             if (role === 'lucia') {
                 const regex = /\[BOTONES:\s*(.*?)\]/i;
                 const match = cleanText.match(regex);
                 if (match) {
-                    buttons = match[1].split(',').map(s => s.trim());
+                    // CLEANUP: Eliminamos asteriscos y caracteres extraños de los botones
+                    buttons = match[1].split(',').map(s => s.replace(/[\*\_\[\]]/g, '').trim());
                     cleanText = cleanText.replace(regex, "").trim();
                 }
             }
