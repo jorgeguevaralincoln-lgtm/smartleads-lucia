@@ -348,9 +348,11 @@ Si dice "Tengo que hablar con mi esposa": Valida pero insiste en la salud de hoy
         if (!useLocalStorage) {
             onAuthStateChanged(auth, (user) => {
                 if (user) {
-                    currentUser = user; 
+                    currentUser = user;
+                    // Se llama a loadSettings SIEMPRE que hay usuario para evitar el bug de refresco
+                    loadSettings();
+                    
                     if (user.isAnonymous) {
-                        loadSettings();
                         try { setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), { startedAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: 'Sesión iniciada', status: 'Navegando', summary: 'Pendiente...' }, { merge: true }).catch(e => setupLocalMode()); } catch(e){setupLocalMode();}
                     }
                 } else initAuth();
