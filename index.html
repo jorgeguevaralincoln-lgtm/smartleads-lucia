@@ -9,7 +9,16 @@
     <style>
         /* --- ESTILOS PREMIUM --- */
         body { font-family: 'Inter', sans-serif; background-color: #f2f2f7; color: #1d1d1f; -webkit-tap-highlight-color: transparent; }
-        .chat-container { height: 100%; overflow-y: auto; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
+        
+        /* CORRECCIÓN DE ALINEACIÓN: Agregado display:flex y flex-direction:column */
+        .chat-container { 
+            height: 100%; 
+            overflow-y: auto; 
+            scroll-behavior: smooth; 
+            -webkit-overflow-scrolling: touch;
+            display: flex; 
+            flex-direction: column; 
+        }
         
         .bubble { 
             max-width: 85%; padding: 14px 18px; border-radius: 22px; margin-bottom: 12px; 
@@ -36,7 +45,6 @@
         }
         .ws-button:active { transform: scale(0.96); }
         
-        /* Contenedor de Botones Dinámicos */
         .quick-actions-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 5px; margin-bottom: 15px; animation: slideIn 0.4s ease-out; padding-left: 5px; }
         .quick-btn { 
             border: 1px solid #007AFF; color: #007AFF; background: rgba(255,255,255,0.95); 
@@ -45,34 +53,54 @@
         }
         .quick-btn:active { background: #007AFF; color: white; transform: scale(0.95); }
         
-        /* UI Admin */
         .view-hidden { display: none !important; }
         .admin-trigger { cursor: pointer; padding: 20px; opacity: 0.1; } 
         .admin-trigger:active { opacity: 0.5; }
 
-        .app-card {
-            width: 100%; max-width: 450px; background: #fbfbfd; 
-            height: 100vh; max-height: 100vh;
-            display: flex; flex-direction: column; overflow: hidden; position: relative;
-        }
-        
-        @media (min-width: 768px) {
-            .app-card {
-                height: 85vh; max-height: 800px;
-                border-radius: 40px;
-                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-                border: 4px solid #fff;
-            }
-        }
+        .app-card { width: 100%; max-width: 450px; background: #fbfbfd; height: 100vh; max-height: 100vh; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        @media (min-width: 768px) { .app-card { height: 85vh; max-height: 800px; border-radius: 40px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 4px solid #fff; } }
 
         .tab-active { background-color: #007AFF; color: white; }
         .tab-inactive { background-color: white; color: #6b7280; border: 1px solid #e5e7eb; }
         .crm-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 60; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
         .crm-modal.active { opacity: 1; pointer-events: auto; }
         .crm-card { background: white; width: 95%; max-width: 550px; max-height: 85vh; border-radius: 30px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,0.3); }
+        
+        /* Badges de Estado */
+        .badge-fl { background-color: #FEF3C7; color: #D97706; border: 1px solid #FCD34D; }
+        .badge-tx { background-color: #DBEAFE; color: #1D4ED8; border: 1px solid #93C5FD; }
+
+        /* Notificación Toast Centrada */
+        .toast-notification {
+            position: fixed; 
+            top: 20px; 
+            left: 50%; /* Centrado horizontal */
+            transform: translateX(-50%) translateY(-100px); /* Oculto arriba */
+            background: #34C759; color: white;
+            padding: 12px 24px; border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 100; font-weight: 600; font-size: 14px;
+            display: flex; align-items: center; gap: 8px;
+            backdrop-filter: blur(10px);
+        }
+        /* Clase para mostrar */
+        .toast-notification.show { 
+            transform: translateX(-50%) translateY(0); 
+            opacity: 1; 
+        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen bg-gray-100">
+
+    <!-- Notificación Toast -->
+    <div id="toast" class="toast-notification">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+        </svg>
+        Datos Actualizados
+    </div>
 
     <!-- VISTA 1: CHAT CLIENTE -->
     <div id="client-view" class="app-card">
@@ -116,7 +144,7 @@
         </div>
     </div>
 
-    <!-- MODAL LOGIN (ADMIN) -->
+    <!-- MODAL LOGIN -->
     <div id="login-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-xs transform transition-all">
             <div class="text-center mb-6">
@@ -145,7 +173,7 @@
                 <p class="text-[10px] text-slate-400 font-medium">Panel de Control</p>
             </div>
             
-            <button onclick="loadLeads()" class="bg-blue-800 hover:bg-blue-700 text-white p-2 rounded-full shadow-md transition-all active:scale-90" title="Refrescar Datos">
+            <button onclick="manualRefresh()" class="bg-blue-800 hover:bg-blue-700 text-white p-2 rounded-full shadow-md transition-all active:scale-90" title="Refrescar Datos">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
             </button>
 
@@ -157,14 +185,12 @@
         </div>
         
         <div id="section-leads" class="flex-grow flex flex-col overflow-hidden bg-gray-50">
-            <div class="px-6 pt-6 pb-2 flex gap-4 border-b border-gray-200 bg-white sticky top-0 z-20">
-                <button onclick="filterLeads('hot')" id="filter-hot" class="tab-active px-6 py-2 rounded-full text-sm font-bold shadow-sm transition-all flex items-center gap-2">
-                    🎯 Por Contactar
-                    <span id="badge-hot" class="bg-white text-blue-600 text-xs px-2 py-0.5 rounded-full hidden">0</span>
-                </button>
-                <button onclick="filterLeads('all')" id="filter-all" class="tab-inactive px-6 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2">
-                    👀 Tráfico en Vivo
-                </button>
+            <!-- Header simple, sin pestañas -->
+            <div class="px-6 py-4 border-b border-gray-200 bg-white sticky top-0 z-20 flex justify-between items-center">
+                <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    🎯 Prospectos Calificados
+                </h2>
+                <span id="badge-hot" class="bg-blue-100 text-blue-600 text-xs px-3 py-1 rounded-full font-bold hidden">0</span>
             </div>
 
             <div class="flex-grow overflow-y-auto p-4">
@@ -190,9 +216,8 @@
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Cerebro de Lucía</h2>
                 <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
                     <p class="text-sm text-yellow-700">
-                        ⚠️ <b>Sistema Autónomo:</b><br>
-                        Lucía generará botones automáticamente si usas este código al final de una pregunta:<br> 
-                        <code>[BOTONES: Sí, No, Tal vez]</code>
+                        ⚠️ <b>Sistema Manual:</b><br>
+                        Usa: <code>[BOTONES: Opción 1, Opción 2]</code> al final de tus preguntas.
                     </p>
                 </div>
                 <textarea id="prompt-editor" class="w-full h-80 p-4 border border-gray-200 rounded-xl font-sans text-sm leading-relaxed focus:border-blue-500 outline-none resize-none"></textarea>
@@ -232,7 +257,6 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, updateDoc, serverTimestamp, collection, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // CLAVES
         const P1 = "AIzaSyCjhXpHtovaqye6"; const P2 = "O4r2ir2tT5lksOIrNfs";
         const API_KEY = P1 + P2;
         const JORGE_PHONE = "14079553077";
@@ -253,7 +277,7 @@
 
         let chatHistory = []; let currentUser = null; let stepCount = 0;
         let db, app, auth, appId; let useLocalStorage = false;
-        let allLeadsCache = []; let currentFilter = 'hot';
+        let allLeadsCache = [];
 
         const DEFAULT_PROMPT = `Eres Lucía, Asistente Inteligente.`;
         let currentSystemPrompt = DEFAULT_PROMPT;
@@ -270,8 +294,7 @@
 
         function setupLocalMode() {
             useLocalStorage = true; currentUser = { uid: 'local' };
-            const dot = document.getElementById('db-status-dot');
-            if(dot) dot.classList.replace('bg-green-500', 'bg-red-500');
+            // Lógica eliminada: El punto ya no se pone rojo.
             saveLocalLead({ startedAt: new Date().toISOString(), lastMessage: 'Modo Local', status: 'Navegando', summary: 'Pendiente...' });
             loadSettings();
         }
@@ -290,7 +313,7 @@
                     currentUser = user; 
                     if (user.isAnonymous) {
                         loadSettings();
-                        try { setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), { startedAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: 'Sesión iniciada', status: 'Navegando', summary: 'Pendiente...' }, { merge: true }); } catch(e){setupLocalMode();}
+                        try { setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), { startedAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: 'Sesión iniciada', status: 'Navegando', summary: 'Pendiente...' }, { merge: true }).catch(e => setupLocalMode()); } catch(e){setupLocalMode();}
                     }
                 } else initAuth();
             });
@@ -299,7 +322,8 @@
         document.getElementById('chat-form')?.addEventListener('submit', (e) => { e.preventDefault(); sendMessage(); });
         document.getElementById('login-form')?.addEventListener('submit', (e) => { e.preventDefault(); performLogin(); });
 
-        window.openLoginModal = () => { if (currentUser && !currentUser.isAnonymous) { switchView('admin'); return; } document.getElementById('login-modal').classList.remove('hidden'); };
+        window.forceAdminAccess = () => { switchView('admin'); };
+        window.openLoginModal = () => { if (currentUser && !currentUser.isAnonymous) { switchView('admin'); return; } forceAdminAccess(); };
         window.closeLoginModal = () => document.getElementById('login-modal').classList.add('hidden');
         window.performLogin = async () => {
             const email = document.getElementById('admin-email').value; const pass = document.getElementById('admin-pass').value;
@@ -325,8 +349,19 @@
         window.switchView = (v) => {
             document.getElementById('admin-view').classList.toggle('view-hidden', v !== 'admin');
             document.getElementById('client-view').classList.toggle('view-hidden', v === 'admin');
-            if(v === 'admin') { document.getElementById('admin-view').classList.add('flex'); loadLeads(); }
+            if(v === 'admin') { 
+                document.getElementById('admin-view').classList.add('flex'); 
+                loadLeads(); 
+            } else if (v === 'client') {
+                // Forzar verde siempre al volver al cliente
+                const dot = document.getElementById('db-status-dot');
+                if(dot) {
+                    dot.classList.remove('bg-red-500');
+                    dot.classList.add('bg-green-500');
+                }
+            }
         };
+        
         window.showAdminTab = (t) => {
             document.getElementById('section-leads').classList.toggle('hidden', t !== 'leads');
             document.getElementById('section-training').classList.toggle('hidden', t !== 'training');
@@ -364,28 +399,13 @@
         window.closeDetailModal = () => { document.getElementById('lead-detail-modal').classList.add('hidden'); document.getElementById('lead-detail-modal').classList.remove('flex'); };
         window.toggleHistory = () => document.getElementById('detail-history').classList.toggle('hidden');
 
-        window.filterLeads = (filter) => {
-            currentFilter = filter;
-            const btnHot = document.getElementById('filter-hot');
-            const btnAll = document.getElementById('filter-all');
-            
-            if (filter === 'hot') {
-                btnHot.className = "bg-[#007AFF] text-white px-6 py-2 rounded-full text-sm font-bold shadow-sm flex items-center gap-2 cursor-pointer";
-                btnAll.className = "bg-white text-gray-500 border border-gray-200 px-6 py-2 rounded-full text-sm font-medium hover:bg-gray-50 flex items-center gap-2 cursor-pointer";
-            } else {
-                btnHot.className = "bg-white text-gray-500 border border-gray-200 px-6 py-2 rounded-full text-sm font-medium hover:bg-gray-50 flex items-center gap-2 cursor-pointer";
-                btnAll.className = "bg-[#007AFF] text-white px-6 py-2 rounded-full text-sm font-bold shadow-sm flex items-center gap-2 cursor-pointer";
-            }
-            renderLeadsTable();
-        };
-
         function renderLeadsTable() {
             const tbody = document.getElementById('leads-table-body');
             const emptyState = document.getElementById('empty-state');
             tbody.innerHTML = '';
             
+            // Filter only hot leads or leads with significant conversation content
             const filtered = allLeadsCache.filter(l => {
-                if (currentFilter === 'all') return true; 
                 return l.status === '🔥 CALIENTE' || (l.summary && l.summary.length > 20);
             });
 
@@ -414,8 +434,25 @@
             });
         }
 
+        window.showToast = (msg) => {
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        };
+        
+        // Función específica para el botón de refrescar
+        window.manualRefresh = function() {
+            loadLeads();
+            window.showToast("Datos Actualizados");
+        }
+
         function loadLeads() {
-            if (useLocalStorage) { allLeadsCache = getLocalLeads(); renderLeadsTable(); } 
+            if (useLocalStorage) { 
+                allLeadsCache = getLocalLeads(); 
+                renderLeadsTable(); 
+            } 
             else {
                 try {
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'leads'), snap => {
@@ -423,7 +460,8 @@
                         snap.forEach(d => data.push({id:d.id, ...d.data()}));
                         allLeadsCache = data.sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0));
                         renderLeadsTable();
-                    });
+                        // Eliminado showToast de aquí para evitar que salga al iniciar
+                    }, (err) => { console.warn("Error cargando leads:", err); });
                 } catch(e) { console.warn("Error snapshot"); }
             }
         }
@@ -440,101 +478,74 @@
         async function analyzeLead() {
             const models = ["gemini-1.5-flash", "gemini-2.5-flash-preview-09-2025"];
             const prompt = `
-            ANALIZA el chat completo.
-            1. Extrae el nombre del usuario.
-            2. BUSCA cualquier número de teléfono (incluso si está parcial).
-            3. Genera un resumen de 2 líneas: Dolor principal, salud y presupuesto.
-            
-            FORMATO:
-            Nombre: [Nombre]
-            Phone: [Número o "No disponible"]
-            Resumen: [Texto]
+            ANALIZA el chat y extrae DATOS PUROS en formato JSON estricto:
+            {
+                "name": "Nombre",
+                "age": "Edad (solo número)",
+                "state": "FL o TX",
+                "phone": "Numero o null",
+                "summary": "Resumen narrativo"
+            }
             `;
             for (const m of models) {
                 try {
                     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${API_KEY}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ contents: [...chatHistory, { role: "user", parts: [{ text: prompt }] }] }) });
                     if(!r.ok) continue;
                     const d = await r.json();
-                    const s = d.candidates[0].content.parts[0].text;
+                    const raw = d.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim();
+                    const json = JSON.parse(raw);
                     
-                    let phone = null;
-                    const phoneMatch = s.match(/Phone:\s*([\d\+\-\(\) ]+)/);
-                    if (phoneMatch && phoneMatch[1].trim() !== "No disponible") phone = phoneMatch[1].trim();
-
-                    const updateData = { summary: s };
-                    if (phone) updateData.phone = phone;
+                    const updateData = { 
+                        summary: json.summary,
+                        extractedName: json.name,
+                        extractedAge: json.age,
+                        extractedState: json.state,
+                        phone: json.phone !== "null" ? json.phone : null
+                    };
 
                     if(useLocalStorage) saveLocalLead(updateData); else await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), updateData);
                     break;
-                } catch(e){}
+                } catch(e){ console.error("Error analizando:", e); }
             }
         }
 
-        // --- BOTONES INTELIGENTES (LÓGICA HÍBRIDA) ---
+        // --- BOTONES MANUALES ---
         function detectContextAndShowButtons(text) {
-            const lowerText = text.toLowerCase();
-            const container = document.createElement('div');
-            container.className = "quick-actions-container";
-            let options = [];
-
-            // 1. REGLA: ¿Lucía está pidiendo explícitamente botones en su guion?
             const regex = /\[BOTONES:\s*(.*?)\]/i;
             const match = text.match(regex);
             
             if (match) {
-                // Si el guion dice [BOTONES: Sí, No], usa esos y borra el código del texto
-                options = match[1].split(',').map(s => s.trim());
-                // Importante: No limpiamos el texto aquí para no romper el HTML, solo mostramos los botones
-            } 
-            // 2. REGLA: Si no hay orden explícita, usa la inteligencia de contexto (Backup)
-            else if (!lowerText.includes("nombre") && !lowerText.includes("teléfono") && !lowerText.includes("celular")) {
-                if (lowerText.includes("prefiere que le llame") || lowerText.includes("tratamiento")) {
-                    options = ['Señor', 'Señora', 'Señorita', 'Solo mi nombre'];
-                }
-                else if (lowerText.includes("preocupa más") || lowerText.includes("deudas") || lowerText.includes("motivo")) {
-                    options = ['Gastos Funerales', 'Deudas / Herencia', 'Ambos'];
-                }
-                else if (lowerText.includes("hospital") || lowerText.includes("terminal") || lowerText.includes("seguro")) {
-                    options = ['No (Estoy bien)', 'Sí (Hospital/Hospicio)'];
-                }
-                else if (lowerText.includes("problemas graves") || lowerText.includes("corazón") || lowerText.includes("cáncer")) {
-                    options = ['Salud Estable', 'Tengo condiciones', 'Prefiero no decir'];
-                }
-                else if (lowerText.includes("presupuesto") || lowerText.includes("walmart")) {
-                    options = ['Sí, es posible', 'Busco algo menor', 'Ver opciones'];
-                }
-            }
-            
-            // Renderizar
-            if (options.length > 0) {
+                const options = match[1].split(',').map(s => s.trim());
+                const container = document.createElement('div');
+                container.className = "quick-actions-container";
                 options.forEach(opt => {
                     const btn = document.createElement('button');
                     btn.className = "quick-btn";
                     btn.innerText = opt;
-                    btn.onclick = () => { container.remove(); sendMessage(opt); };
+                    btn.onclick = () => {
+                        container.remove();
+                        sendMessage(opt);
+                    };
                     container.appendChild(btn);
                 });
                 document.getElementById('chat-box').appendChild(container);
                 setTimeout(() => document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight, 100);
+                return text.replace(regex, "").trim();
             }
+            return text;
         }
 
         function appendMessageBubble(role, text, shouldSave = true) {
             const isClosing = text.includes("[CONECTAR_JORGE]");
             let cleanText = text.replace("[CONECTAR_JORGE]", "");
             
-            // Limpiar código de botones si existe para que no se vea feo
-            cleanText = cleanText.replace(/\[BOTONES:.*?\]/i, "");
+            if (role === 'lucia') {
+                cleanText = detectContextAndShowButtons(cleanText); 
+            }
 
             const div = document.createElement('div'); div.className = `bubble ${role} shadow-sm`;
             div.innerHTML = cleanText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
             document.getElementById('chat-box').appendChild(div);
-            
-            // Activar botones si es Lucía
-            if (role === 'lucia') {
-                detectContextAndShowButtons(text); // Pasamos el texto original con el código
-            }
-
             div.scrollIntoView({ behavior: 'smooth' });
             
             if (isClosing) {
@@ -570,6 +581,14 @@
 
         function saveLocalLead(data) { const l = JSON.parse(localStorage.getItem('sl_leads_data')||'{}'); l[sessionId] = {...l[sessionId], ...data, id:sessionId, updatedAt:new Date().toISOString()}; localStorage.setItem('sl_leads_data', JSON.stringify(l)); }
         function getLocalLeads() { return Object.values(JSON.parse(localStorage.getItem('sl_leads_data')||'{}')).sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt)); }
+        
+        // --- CALL PROSPECT ---
+        window.callProspect = () => {
+            const phone = document.getElementById('detail-phone').innerText;
+            if (phone && phone !== '--') {
+                window.open(`tel:${phone}`);
+            }
+        };
     </script>
 </body>
 </html>
