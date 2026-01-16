@@ -1,798 +1,182 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SmartLeads | Asistente Inteligente</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        /* --- ESTILOS PREMIUM --- */
-        body { font-family: 'Inter', sans-serif; background-color: #f2f2f7; color: #1d1d1f; -webkit-tap-highlight-color: transparent; }
-        
-        /* CHAT CONTAINER: Flex column para alineación correcta */
-        .chat-container { 
-            height: 100%; 
-            overflow-y: auto; 
-            scroll-behavior: smooth; 
-            -webkit-overflow-scrolling: touch;
-            display: flex; 
-            flex-direction: column; 
-            padding-bottom: 20px;
-        }
-        
-        .bubble { 
-            max-width: 85%; padding: 14px 18px; border-radius: 22px; margin-bottom: 4px; 
-            font-size: 15px; line-height: 1.5; box-shadow: 0 1px 2px rgba(0,0,0,0.05); 
-            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
-            position: relative;
-            word-wrap: break-word;
-        }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        /* Lucía (Izquierda) */
-        .lucia { 
-            background: #ffffff; 
-            color: #1d1d1f; 
-            align-self: flex-start; 
-            border-bottom-left-radius: 4px; 
-            margin-right: auto;
-        }
-        
-        /* Usuario (Derecha) */
-        .user { 
-            background: #007AFF; 
-            color: white; 
-            align-self: flex-end; 
-            border-bottom-right-radius: 4px; 
-            margin-left: auto;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>SmartLeads | Asistente Inteligente</title>
 
-        .typing-dot { width: 6px; height: 6px; background: #8e8e93; border-radius: 50%; animation: typing 1.4s infinite ease-in-out both; }
-        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
-        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
-        @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        .ws-button { 
-            background: #34C759; color: white; padding: 16px; border-radius: 18px; font-weight: 600; 
-            display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 15px; width: 100%;
-            box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3); cursor: pointer; transition: transform 0.2s; 
-            align-self: center;
-        }
-        .ws-button:active { transform: scale(0.96); }
-        
-        /* Contenedor de Botones (Debajo del mensaje) */
-        .quick-actions-container { 
-            display: flex; 
-            flex-wrap: wrap; 
-            gap: 8px; 
-            margin-top: 8px; 
-            margin-bottom: 15px; 
-            animation: slideIn 0.4s ease-out; 
-            align-self: flex-start; /* Alineados a la izquierda como Lucía */
-            width: 100%;
-        }
-        
-        .quick-btn { 
-            border: 1px solid #007AFF; color: #007AFF; background: rgba(255,255,255,0.95); 
-            padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: 500; 
-            cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-        .quick-btn:active { background: #007AFF; color: white; transform: scale(0.95); }
-        
-        .view-hidden { display: none !important; }
-        .admin-trigger { cursor: pointer; padding: 20px; opacity: 0.1; } 
-        .admin-trigger:active { opacity: 0.5; }
-
-        .app-card { width: 100%; max-width: 450px; background: #fbfbfd; height: 100vh; max-height: 100vh; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-        @media (min-width: 768px) { .app-card { height: 85vh; max-height: 800px; border-radius: 40px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 4px solid #fff; } }
-
-        .tab-active { background-color: #007AFF; color: white; }
-        .tab-inactive { background-color: white; color: #6b7280; border: 1px solid #e5e7eb; }
-        .crm-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 60; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
-        .crm-modal.active { opacity: 1; pointer-events: auto; }
-        .crm-card { background: white; width: 95%; max-width: 550px; max-height: 85vh; border-radius: 30px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,0.3); }
-        
-        .badge-fl { background-color: #FEF3C7; color: #D97706; border: 1px solid #FCD34D; }
-        .badge-tx { background-color: #DBEAFE; color: #1D4ED8; border: 1px solid #93C5FD; }
-
-        .toast-notification {
-            position: fixed; 
-            top: 20px; 
-            left: 50%; 
-            transform: translateX(-50%) translateY(-100px); 
-            background: #34C759; color: white;
-            padding: 12px 24px; border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-            opacity: 0;
-            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            z-index: 100; font-weight: 600; font-size: 14px;
-            display: flex; align-items: center; gap: 8px;
-            backdrop-filter: blur(10px);
-        }
-        .toast-notification.show { 
-            transform: translateX(-50%) translateY(0); 
-            opacity: 1; 
-        }
-    </style>
+  <link rel="stylesheet" href="./assets/styles.css" />
 </head>
+
 <body class="flex items-center justify-center min-h-screen bg-gray-100">
 
-    <div id="toast" class="toast-notification">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-        </svg>
-        <span id="toast-message">Datos Actualizados</span>
+  <div id="toast" class="toast-notification">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+    </svg>
+    <span id="toast-message">Datos Actualizados</span>
+  </div>
+
+  <!-- VISTA 1: CHAT CLIENTE -->
+  <div id="client-view" class="app-card">
+    <div class="bg-white/80 backdrop-blur-md p-4 flex items-center gap-4 z-20 border-b border-gray-200 sticky top-0">
+      <div class="relative">
+        <img
+          src="https://img.freepik.com/free-photo/portrait-young-businesswoman-holding-eyeglasses-hand-against-gray-background_23-2148029483.jpg?w=200"
+          class="w-12 h-12 rounded-full object-cover border border-gray-100 shadow-sm"
+          alt="Lucía"
+        />
+        <span id="db-status-dot" class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></span>
+      </div>
+      <div class="flex-grow">
+        <h1 class="text-[17px] font-bold text-gray-900 leading-tight">Lucía</h1>
+        <p class="text-[12px] text-green-600 font-semibold">Asistente en línea</p>
+      </div>
     </div>
 
-    <!-- VISTA 1: CHAT CLIENTE -->
-    <div id="client-view" class="app-card">
-        <div class="bg-white/80 backdrop-blur-md p-4 flex items-center gap-4 z-20 border-b border-gray-200 sticky top-0">
-            <div class="relative">
-                <img src="https://img.freepik.com/free-photo/portrait-young-businesswoman-holding-eyeglasses-hand-against-gray-background_23-2148029483.jpg?w=200" 
-                     class="w-12 h-12 rounded-full object-cover border border-gray-100 shadow-sm" alt="Lucía">
-                <span id="db-status-dot" class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></span>
-            </div>
-            <div class="flex-grow">
-                <h1 class="text-[17px] font-bold text-gray-900 leading-tight">Lucía</h1>
-                <p class="text-[12px] text-green-600 font-semibold">Asistente en línea</p>
-            </div>
-        </div>
+    <div id="chat-box" class="chat-container p-5 flex-grow no-scrollbar bg-[#f5f5f7]">
+      <!-- MENSAJE DE BIENVENIDA ESTÁTICO -->
+      <div class="bubble lucia shadow-sm">
+        Hola, soy <b>Lucía</b>, su Asistente de beneficios. Mi labor es ayudarle a tomar decisiones acertadas para su familia. Toda su información es privada y nada se compartirá sin su permiso.<br><br>
+        <b>¿Desea continuar para conocer sus beneficios?</b>
+      </div>
 
-        <div id="chat-box" class="chat-container p-5 flex-grow no-scrollbar bg-[#f5f5f7]">
-            <!-- MENSAJE DE BIENVENIDA ESTÁTICO (EL CÓDIGO) -->
-            <div class="bubble lucia shadow-sm">
-                Hola, soy <b>Lucía</b>, su Asistente de beneficios. Mi labor es ayudarle a tomar decisiones acertadas para su familia. Toda su información es privada y nada se compartirá sin su permiso.<br><br>
-                <b>¿Desea continuar para conocer sus beneficios?</b>
-            </div>
-            <!-- BOTONES INICIALES ESTÁTICOS (EL CÓDIGO) -->
-            <div class="quick-actions-container">
-                <button class="quick-btn" onclick="sendMessage('Sí, continuar')">Sí, continuar</button>
-                <button class="quick-btn" onclick="sendMessage('No me interesa')">No me interesa</button>
-            </div>
-        </div>
-
-        <div id="loading" class="px-6 py-2 hidden bg-[#f5f5f7]">
-            <div class="bg-gray-200 inline-flex items-center gap-1.5 px-4 py-2 rounded-full">
-                <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
-            </div>
-        </div>
-
-        <div class="p-4 bg-white border-t border-gray-200">
-            <form id="chat-form" class="flex items-center gap-2 mb-2" autocomplete="off">
-                <div class="flex-grow bg-gray-100 rounded-full border border-transparent focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                    <input id="user-input" type="text" name="message" autocomplete="off" placeholder="Escribe aquí..." class="w-full bg-transparent px-5 py-3 outline-none text-[16px] text-gray-800 placeholder-gray-400 rounded-full">
-                </div>
-                <button type="submit" id="send-btn" class="bg-[#007AFF] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 pl-0.5"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>
-                </button>
-            </form>
-            <p class="text-center text-[10px] text-gray-400 select-none">
-                <span class="admin-trigger" onclick="openLoginModal()">SmartLeads</span> • Conexión Segura
-            </p>
-        </div>
+      <!-- BOTONES INICIALES ESTÁTICOS -->
+      <div class="quick-actions-container">
+        <button class="quick-btn" onclick="sendMessage('Sí, continuar')">Sí, continuar</button>
+        <button class="quick-btn" onclick="sendMessage('No me interesa')">No me interesa</button>
+      </div>
     </div>
 
-    <!-- MODAL LOGIN -->
-    <div id="login-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-xs transform transition-all">
-            <div class="text-center mb-6">
-                <h3 class="text-xl font-bold text-gray-900">Acceso Admin</h3>
-                <p class="text-sm text-gray-500">Solo personal autorizado</p>
-            </div>
-            
-            <form id="login-form">
-                <input type="email" id="admin-email" name="email" autocomplete="username" class="w-full border-b border-gray-200 py-3 px-2 mb-3 focus:border-blue-500 outline-none text-gray-800" placeholder="Correo electrónico">
-                <input type="password" id="admin-pass" name="password" autocomplete="current-password" class="w-full border-b border-gray-200 py-3 px-2 mb-6 focus:border-blue-500 outline-none text-gray-800" placeholder="Contraseña">
-                
-                <div class="flex gap-3">
-                    <button type="button" onclick="closeLoginModal()" class="flex-1 py-3 rounded-xl bg-gray-100 text-gray-600 font-bold active:scale-95 transition-transform">Cancelar</button>
-                    <button type="submit" class="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold shadow-lg active:scale-95 transition-transform">Entrar</button>
-                </div>
-            </form>
-            <p id="login-error" class="text-center text-xs text-red-500 mt-4 hidden font-bold"></p>
-        </div>
+    <div id="loading" class="px-6 py-2 hidden bg-[#f5f5f7]">
+      <div class="bg-gray-200 inline-flex items-center gap-1.5 px-4 py-2 rounded-full">
+        <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+      </div>
     </div>
 
-    <!-- PANEL ADMIN -->
-    <div id="admin-view" class="w-full max-w-6xl bg-white md:rounded-[30px] shadow-2xl h-screen md:h-[90vh] flex flex-col overflow-hidden border border-gray-200 view-hidden relative">
-        <div class="bg-slate-900 p-5 text-white flex flex-wrap justify-between items-center gap-4">
-            <div>
-                <h1 class="text-xl font-bold tracking-tight">SmartLeads CRM</h1>
-                <p class="text-[10px] text-slate-400 font-medium">Panel de Control</p>
-            </div>
-            
-            <div class="flex items-center gap-2">
-                <button onclick="manualRefresh()" class="bg-blue-800 hover:bg-blue-700 text-white p-2 rounded-full shadow-md transition-all active:scale-90" title="Refrescar Datos">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                </button>
-                <button onclick="showAdminTab('leads')" id="nav-leads" class="text-white bg-white/10 px-4 py-2 rounded-lg text-sm font-bold">Leads</button>
-                <button onclick="showAdminTab('training')" id="nav-training" class="text-slate-400 hover:text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">IA</button>
-                <button onclick="logoutAdmin()" class="bg-red-500/20 text-red-300 hover:bg-red-500/30 px-4 py-2 rounded-lg text-xs font-bold ml-2">Salir</button>
-            </div>
+    <div class="p-4 bg-white border-t border-gray-200">
+      <form id="chat-form" class="flex items-center gap-2 mb-2" autocomplete="off">
+        <div class="flex-grow bg-gray-100 rounded-full border border-transparent focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+          <input id="user-input" type="text" name="message" autocomplete="off" placeholder="Escribe aquí..." class="w-full bg-transparent px-5 py-3 outline-none text-[16px] text-gray-800 placeholder-gray-400 rounded-full">
         </div>
-        
-        <div id="section-leads" class="flex-grow flex flex-col overflow-hidden bg-gray-50">
-            <div class="px-6 py-4 border-b border-gray-200 bg-white sticky top-0 z-20 flex justify-between items-center">
-                <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
-                    🎯 Prospectos Calificados
-                </h2>
-                <span id="badge-hot" class="bg-blue-100 text-blue-600 text-xs px-3 py-1 rounded-full font-bold hidden">0</span>
-            </div>
+        <button type="submit" id="send-btn" class="bg-[#007AFF] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 pl-0.5"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>
+        </button>
+      </form>
 
-            <div class="flex-grow overflow-y-auto p-4">
-                <table class="w-full text-left border-collapse bg-white rounded-2xl shadow-sm overflow-hidden">
-                    <thead class="bg-gray-50 border-b border-gray-100">
-                        <tr class="text-gray-400 text-[10px] uppercase font-bold tracking-wider">
-                            <th class="p-4 w-32">Fecha</th>
-                            <th class="p-4">Prospecto</th>
-                            <th class="p-4">Interés Principal</th>
-                            <th class="p-4 text-right">Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leads-table-body" class="divide-y divide-gray-50"></tbody>
-                </table>
-                <div id="empty-state" class="hidden text-center py-20">
-                    <p class="text-gray-400 text-sm">No hay leads pendientes por contactar.</p>
-                </div>
-            </div>
-        </div>
+      <p class="text-center text-[10px] text-gray-400 select-none">
+        <span class="admin-trigger" onclick="openLoginModal()">SmartLeads</span> • Conexión Segura
+      </p>
+    </div>
+  </div>
 
-        <div id="section-training" class="flex-grow p-6 bg-gray-50 overflow-y-auto hidden">
-            <div class="max-w-3xl mx-auto bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                <h2 class="text-lg font-bold text-gray-900 mb-4">Cerebro de Lucía</h2>
-                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-                    <p class="text-sm text-yellow-700">
-                        ⚠️ <b>Sistema Manual:</b><br>
-                        Usa: <code>[BOTONES: Opción 1, Opción 2]</code> al final de tus preguntas.
-                    </p>
-                </div>
-                <textarea id="prompt-editor" class="w-full h-80 p-4 border border-gray-200 rounded-xl font-sans text-sm leading-relaxed focus:border-blue-500 outline-none resize-none"></textarea>
-                <div class="mt-4 flex justify-end">
-                    <button onclick="savePrompt()" class="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">Guardar Configuración</button>
-                </div>
-            </div>
+  <!-- MODAL LOGIN -->
+  <div id="login-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-xs transform transition-all">
+      <div class="text-center mb-6">
+        <h3 class="text-xl font-bold text-gray-900">Acceso Admin</h3>
+        <p class="text-sm text-gray-500">Solo personal autorizado</p>
+      </div>
+
+      <form id="login-form">
+        <input type="email" id="admin-email" name="email" autocomplete="username" class="w-full border-b border-gray-200 py-3 px-2 mb-3 focus:border-blue-500 outline-none text-gray-800" placeholder="Correo electrónico">
+        <input type="password" id="admin-pass" name="password" autocomplete="current-password" class="w-full border-b border-gray-200 py-3 px-2 mb-6 focus:border-blue-500 outline-none text-gray-800" placeholder="Contraseña">
+
+        <div class="flex gap-3">
+          <button type="button" onclick="closeLoginModal()" class="flex-1 py-3 rounded-xl bg-gray-100 text-gray-600 font-bold active:scale-95 transition-transform">Cancelar</button>
+          <button type="submit" class="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold shadow-lg active:scale-95 transition-transform">Entrar</button>
         </div>
+      </form>
+      <p id="login-error" class="text-center text-xs text-red-500 mt-4 hidden font-bold"></p>
+    </div>
+  </div>
+
+  <!-- PANEL ADMIN -->
+  <div id="admin-view" class="w-full max-w-6xl bg-white md:rounded-[30px] shadow-2xl h-screen md:h-[90vh] flex flex-col overflow-hidden border border-gray-200 view-hidden relative">
+    <div class="bg-slate-900 p-5 text-white flex flex-wrap justify-between items-center gap-4">
+      <div>
+        <h1 class="text-xl font-bold tracking-tight">SmartLeads CRM</h1>
+        <p class="text-[10px] text-slate-400 font-medium">Panel de Control</p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="manualRefresh()" class="bg-blue-800 hover:bg-blue-700 text-white p-2 rounded-full shadow-md transition-all active:scale-90" title="Refrescar Datos">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+        </button>
+        <button onclick="showAdminTab('leads')" id="nav-leads" class="text-white bg-white/10 px-4 py-2 rounded-lg text-sm font-bold">Leads</button>
+        <button onclick="showAdminTab('training')" id="nav-training" class="text-slate-400 hover:text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">IA</button>
+        <button onclick="logoutAdmin()" class="bg-red-500/20 text-red-300 hover:bg-red-500/30 px-4 py-2 rounded-lg text-xs font-bold ml-2">Salir</button>
+      </div>
     </div>
 
-    <!-- MODAL DETALLE LEAD -->
-    <div id="lead-detail-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden">
-            <div class="bg-slate-50 p-5 border-b border-gray-100 flex justify-between items-center">
-                <h3 class="text-lg font-bold text-gray-900">Ficha del Prospecto</h3>
-                <button onclick="closeDetailModal()" class="bg-white p-2 rounded-full shadow-sm text-gray-400 hover:text-gray-600">✕</button>
-            </div>
-            <div class="p-6 overflow-y-auto bg-white flex-grow">
-                <div id="detail-summary" class="text-sm text-slate-700 bg-blue-50 p-5 rounded-2xl border border-blue-100 leading-relaxed font-medium whitespace-pre-line">Esperando análisis...</div>
-                
-                <div id="contact-info" class="mt-4 hidden">
-                    <p class="text-xs font-bold text-gray-400 uppercase">Teléfono Detectado</p>
-                    <p class="text-lg font-bold text-gray-800" id="detail-phone">--</p>
-                </div>
+    <div id="section-leads" class="flex-grow flex flex-col overflow-hidden bg-gray-50">
+      <div class="px-6 py-4 border-b border-gray-200 bg-white sticky top-0 z-20 flex justify-between items-center">
+        <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">🎯 Prospectos Calificados</h2>
+        <span id="badge-hot" class="bg-blue-100 text-blue-600 text-xs px-3 py-1 rounded-full font-bold hidden">0</span>
+      </div>
 
-                <button onclick="toggleHistory()" class="mt-6 text-xs font-bold text-gray-400 uppercase tracking-wider w-full text-left hover:text-blue-500">Ver Chat Completo ▼</button>
-                <div id="detail-history" class="hidden mt-3 space-y-2 text-xs text-gray-500 pl-3 border-l-2 border-gray-100"></div>
-            </div>
-            <div class="p-5 border-t border-gray-100 bg-gray-50">
-                <button id="call-btn" onclick="callProspect()" class="w-full bg-green-600 text-white py-3.5 rounded-xl font-bold shadow-lg active:scale-95 transition-transform opacity-50 cursor-not-allowed">📞 Número No Disponible</button>
-            </div>
+      <div class="flex-grow overflow-y-auto p-4">
+        <table class="w-full text-left border-collapse bg-white rounded-2xl shadow-sm overflow-hidden">
+          <thead class="bg-gray-50 border-b border-gray-100">
+            <tr class="text-gray-400 text-[10px] uppercase font-bold tracking-wider">
+              <th class="p-4 w-32">Fecha</th>
+              <th class="p-4">Prospecto</th>
+              <th class="p-4">Interés Principal</th>
+              <th class="p-4 text-right">Acción</th>
+            </tr>
+          </thead>
+          <tbody id="leads-table-body" class="divide-y divide-gray-50"></tbody>
+        </table>
+        <div id="empty-state" class="hidden text-center py-20">
+          <p class="text-gray-400 text-sm">No hay leads pendientes por contactar.</p>
         </div>
+      </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, updateDoc, serverTimestamp, collection, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <div id="section-training" class="flex-grow p-6 bg-gray-50 overflow-y-auto hidden">
+      <div class="max-w-3xl mx-auto bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+        <h2 class="text-lg font-bold text-gray-900 mb-4">Cerebro de Lucía</h2>
+        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+          <p class="text-sm text-yellow-700">
+            ⚠️ <b>Sistema Manual:</b><br>
+            Usa: <code>[BOTONES: Opción 1, Opción 2]</code> al final de tus preguntas.
+          </p>
+        </div>
+        <textarea id="prompt-editor" class="w-full h-80 p-4 border border-gray-200 rounded-xl font-sans text-sm leading-relaxed focus:border-blue-500 outline-none resize-none"></textarea>
+        <div class="mt-4 flex justify-end">
+          <button onclick="savePrompt()" class="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">Guardar Configuración</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        // ✅ ADMIN EMAIL NUEVO (coincide con tus Rules)
-        const ADMIN_EMAIL = "asistentedebeneficios@gmail.com";
+  <!-- MODAL DETALLE LEAD -->
+  <div id="lead-detail-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden">
+      <div class="bg-slate-50 p-5 border-b border-gray-100 flex justify-between items-center">
+        <h3 class="text-lg font-bold text-gray-900">Ficha del Prospecto</h3>
+        <button onclick="closeDetailModal()" class="bg-white p-2 rounded-full shadow-sm text-gray-400 hover:text-gray-600">✕</button>
+      </div>
+      <div class="p-6 overflow-y-auto bg-white flex-grow">
+        <div id="detail-summary" class="text-sm text-slate-700 bg-blue-50 p-5 rounded-2xl border border-blue-100 leading-relaxed font-medium whitespace-pre-line">Esperando análisis...</div>
 
-        const P1 = "AIzaSyCjhXpHtovaqye6"; const P2 = "O4r2ir2tT5lksOIrNfs";
-        const API_KEY = P1 + P2;
-        const JORGE_PHONE = "14079553077";
-        const isInCanvas = typeof __firebase_config !== 'undefined';
-        const MODEL_NAME = isInCanvas ? "gemini-2.5-flash-preview-09-2025" : "gemini-1.5-flash";
-        
-        // SIN MEMORIA DE SESIÓN (Siempre nueva al recargar)
-        const sessionId = crypto.randomUUID(); 
-        localStorage.removeItem('sl_session_id');
+        <div id="contact-info" class="mt-4 hidden">
+          <p class="text-xs font-bold text-gray-400 uppercase">Teléfono Detectado</p>
+          <p class="text-lg font-bold text-gray-800" id="detail-phone">--</p>
+        </div>
 
-        const myFirebaseConfig = {
-            apiKey: "AIzaSyA_-x6UEEVEJ7uAY8ohCrDussZ938QQ0B0",
-            authDomain: "luciaai-46c75.firebaseapp.com",
-            projectId: "luciaai-46c75",
-            storageBucket: "luciaai-46c75.firebasestorage.app",
-            messagingSenderId: "56311029362",
-            appId: "1:56311029362:web:2a09107f6c6f3a7b3ceceb",
-            measurementId: "G-KRMZBRX3JQ"
-        };
+        <button onclick="toggleHistory()" class="mt-6 text-xs font-bold text-gray-400 uppercase tracking-wider w-full text-left hover:text-blue-500">Ver Chat Completo ▼</button>
+        <div id="detail-history" class="hidden mt-3 space-y-2 text-xs text-gray-500 pl-3 border-l-2 border-gray-100"></div>
+      </div>
+      <div class="p-5 border-t border-gray-100 bg-gray-50">
+        <button id="call-btn" onclick="callProspect()" class="w-full bg-green-600 text-white py-3.5 rounded-xl font-bold shadow-lg active:scale-95 transition-transform opacity-50 cursor-not-allowed">📞 Número No Disponible</button>
+      </div>
+    </div>
+  </div>
 
-        let chatHistory = []; let currentUser = null; let stepCount = 0;
-        let db, app, auth, appId; let useLocalStorage = false;
-        let allLeadsCache = [];
-
-        // --- CEREBRO DURO ESTABILIZADO (Híbrido v5) ---
-        const DEFAULT_PROMPT = `
-1. IDENTIDAD Y FILTRO DE INICIO
-Nombre: Lucía.
-Rol: Asistente de beneficios.
-Tono: Respetuoso, sutil y breve (máximo 3 líneas por mensaje). Usa siempre "Usted".
-*NOTA IMPORTANTE: El mensaje de bienvenida ya se mostró en pantalla. El usuario acaba de responder SÍ o NO.*
-
-2. FLUJO DE CONVERSACIÓN (Si responde SÍ)
-Paso 1 (Respeto): Pregunta el trato preferido: “¿Cómo prefiere que le llame, Señor/Señora [Nombre] o por su nombre?”.
-Paso 2 (Datos): Pide edad y código postal para "verificar programas locales".
-Paso 3 (Motivo y Urgencia): Pregunta por qué desea proteger a su familia y refuerza la urgencia: “Si usted hubiera faltado ayer... ¿tendría su familia la paz económica que usted desea dejarles?”.
-Paso 4 (Salud): Consulta sobre estabilidad de salud y hábitos (tabaco/crónicos) de forma amable.
-
-3. FASE 5: EL CIERRE (GUSTITOS Y HOY)
-Pregunta de Gasto: "Hablando con total confianza... ¿cuánto diría usted que se gasta al mes en pequeños 'gustitos' o cositas que a veces compramos y que no son realmente indispensables? ¿Unos $50, $80?"
-El Puente: "Si de ese mismo dinero que usted ya gasta hoy, pudiéramos tomar solo una pequeña parte para que sus hijos tengan la seguridad de que todo está resuelto hoy mismo..."
-Cierre Directo: "¿Habría alguna razón para no protegerse el día de hoy?"
-
-4. MANEJO DE NEGATIVAS Y OBJECIONES
-Si dice NO al inicio: Despídete educadamente: "Entiendo perfectamente. Le agradezco su tiempo y quedo a sus órdenes si en el futuro decide proteger a los suyos. ¡Que tenga un excelente día!".
-Si dice NO pero pregunta después: "Comprendo su duda. Precisamente para responderle con propiedad es necesario seguir el proceso de orientación. Si cambia de opinión, aquí estaré para ayudarle."
-Si dice "Tengo que hablar con mi esposa": Valida el respeto al hogar, pero recuerda que la salud de hoy es la que califica y ofrece la llamada con el Licenciado para ambos.
-
-5. CREDIBILIDAD Y RESTRICCIONES
-Autoridad: Conectas al usuario con un Licenciado acreditado por el Departamento de Servicios Financieros del Estado.
-Privacidad: "Su información solo se compartirá con el Licenciado bajo su debido consentimiento".
-Prohibiciones: No menciones nombres de compañías, números de póliza, ni el nombre "Jorge". El enfoque es siempre la protección para hoy.
-
-6. REGLAS TÉCNICAS (ESTRICTAS - LEER CUIDADOSAMENTE)
-- PROHIBICIÓN DE ALUCINACIÓN: JAMÁS inventes botones que no estén escritos literalmente en este prompt usando la etiqueta [BOTONES: ...]. 
-- PREGUNTAS ABIERTAS: Para preguntas de Nombre, Edad, Dirección o Teléfono, ESTÁ PROHIBIDO USAR BOTONES. Deja que el usuario escriba.
-- FORMATO DE BOTONES: Solo si el admin añade explícitamente [BOTONES: Opción A, Opción B] al final de una pregunta en este guion, debes mostrarlos. Si no hay etiqueta, NO hay botones.
-- Lead Caliente: [CALIENTE] si hay interés alto.
-- Conexión: [CONECTAR_JORGE] si acepta hablar.
-`;
-        let currentSystemPrompt = DEFAULT_PROMPT;
-
-        try {
-            if (typeof __firebase_config !== 'undefined') {
-                const config = JSON.parse(__firebase_config);
-                app = initializeApp(config);
-                auth = getAuth(app);
-                db = getFirestore(app);
-                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app';
-            } 
-            else if (myFirebaseConfig && myFirebaseConfig.apiKey) {
-                app = initializeApp(myFirebaseConfig); 
-                appId = 'smartleads-prod'; 
-                auth = getAuth(app); 
-                db = getFirestore(app);
-            } else { throw "local"; }
-        } catch (e) { setupLocalMode(); }
-
-        function setupLocalMode() {
-            useLocalStorage = true; currentUser = { uid: 'local' };
-            saveLocalLead({ startedAt: new Date().toISOString(), lastMessage: 'Modo Local', status: 'Navegando', summary: 'Pendiente...' });
-            loadSettings();
-        }
-
-        const initAuth = async () => {
-            if (useLocalStorage) { currentUser = { uid: 'local' }; loadSettings(); return; }
-            try {
-                if (isInCanvas && !myFirebaseConfig.apiKey) await signInWithCustomToken(auth, __initial_auth_token);
-                else await signInAnonymously(auth);
-            } catch (error) { setupLocalMode(); }
-        };
-
-        if (!useLocalStorage) {
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    currentUser = user;
-                    loadSettings();
-
-                    if (user.isAnonymous) {
-                        try {
-                            // ✅ FIX: Guardar userId desde el inicio (para que tu Rules permita update/read por dueño)
-                            setDoc(
-                                doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId),
-                                {
-                                    userId: user.uid,
-                                    startedAt: serverTimestamp(),
-                                    updatedAt: serverTimestamp(),
-                                    lastMessage: 'Sesión iniciada',
-                                    status: 'Navegando',
-                                    summary: 'Pendiente...'
-                                },
-                                { merge: true }
-                            ).catch(e => setupLocalMode());
-                        } catch(e){setupLocalMode();}
-                    }
-                } else initAuth();
-            });
-        } else { initAuth(); }
-
-        document.getElementById('chat-form')?.addEventListener('submit', (e) => { e.preventDefault(); sendMessage(); });
-        document.getElementById('login-form')?.addEventListener('submit', (e) => { e.preventDefault(); performLogin(); });
-
-        // ✅ FIX: Ya NO hay puerta trasera al admin sin login
-        window.forceAdminAccess = () => { window.openLoginModal(); };
-
-        // ✅ FIX: Si es anónimo => mostrar modal login. Si es admin real => entrar.
-        window.openLoginModal = () => {
-            if (currentUser && !currentUser.isAnonymous) { switchView('admin'); return; }
-            const m = document.getElementById('login-modal');
-            m.classList.remove('hidden');
-            m.classList.add('flex');
-        };
-
-        // ✅ FIX: cerrar modal correctamente (quitando flex también)
-        window.closeLoginModal = () => {
-            const m = document.getElementById('login-modal');
-            m.classList.add('hidden');
-            m.classList.remove('flex');
-            const errorMsg = document.getElementById('login-error');
-            if (errorMsg) errorMsg.classList.add('hidden');
-        };
-
-        window.performLogin = async () => {
-            const email = document.getElementById('admin-email').value;
-            const pass = document.getElementById('admin-pass').value;
-            const errorMsg = document.getElementById('login-error');
-
-            if(useLocalStorage) {
-                if(pass==="123456"){
-                    closeLoginModal();
-                    switchView('admin');
-                } else {
-                    errorMsg.innerText="Modo Local: 123456";
-                    errorMsg.classList.remove('hidden');
-                }
-                return;
-            }
-
-            try {
-                await signInWithEmailAndPassword(auth, email, pass);
-                closeLoginModal();
-                switchView('admin');
-            } catch (error) {
-                errorMsg.innerText = "Credenciales incorrectas";
-                errorMsg.classList.remove('hidden');
-            }
-        };
-
-        window.logoutAdmin = async () => { await signOut(auth); await signInAnonymously(auth); switchView('client'); };
-
-        async function loadSettings() {
-            const backupPrompt = localStorage.getItem('lucia_brain_backup_v2');
-            
-            if (useLocalStorage) { 
-                currentSystemPrompt = backupPrompt || DEFAULT_PROMPT; 
-            } else { 
-                try { 
-                    const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config')); 
-                    if (snap.exists()) {
-                        currentSystemPrompt = snap.data().prompt || DEFAULT_PROMPT;
-                    } else if (backupPrompt) {
-                        currentSystemPrompt = backupPrompt;
-                    } else {
-                        currentSystemPrompt = DEFAULT_PROMPT;
-                    }
-                } catch (e) { 
-                    currentSystemPrompt = backupPrompt || DEFAULT_PROMPT; 
-                } 
-            }
-            const editor = document.getElementById('prompt-editor');
-            if (editor) editor.value = currentSystemPrompt;
-        }
-
-        window.savePrompt = async () => {
-            const val = document.getElementById('prompt-editor').value; 
-            currentSystemPrompt = val;
-            
-            localStorage.setItem('lucia_brain_backup_v2', val);
-
-            if (useLocalStorage) {
-                window.showToast("Guardado (Localmente)");
-            } else { 
-                try { 
-                    await setDoc(
-                        doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'),
-                        { prompt: val },
-                        { merge: true }
-                    ); 
-                    window.showToast("Prompt guardado correctamente"); 
-                } catch (e) { 
-                    console.error("Save error:", e);
-                    window.showToast("No se pudo guardar en la nube (Permisos/Conexión)"); 
-                } 
-            }
-        };
-
-        window.switchView = (v) => {
-            document.getElementById('admin-view').classList.toggle('view-hidden', v !== 'admin');
-            document.getElementById('client-view').classList.toggle('view-hidden', v === 'admin');
-            if(v === 'admin') { 
-                document.getElementById('admin-view').classList.add('flex'); 
-                // ✅ FIX: al entrar admin, carga prompt + leads
-                loadSettings();
-                loadLeads(); 
-            } else if (v === 'client') {
-                const dot = document.getElementById('db-status-dot');
-                if(dot) {
-                    dot.classList.remove('bg-red-500');
-                    dot.classList.add('bg-green-500');
-                }
-            }
-        };
-        
-        window.showAdminTab = (t) => {
-            document.getElementById('section-leads').classList.toggle('hidden', t !== 'leads');
-            document.getElementById('section-training').classList.toggle('hidden', t !== 'training');
-            document.getElementById('nav-leads').className = t === 'leads' ? 'text-white bg-white/10 px-4 py-2 rounded-lg text-sm font-bold' : 'text-slate-400 hover:text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors';
-            document.getElementById('nav-training').className = t === 'training' ? 'text-white bg-white/10 px-4 py-2 rounded-lg text-sm font-bold' : 'text-slate-400 hover:text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors';
-        };
-
-        window.openDetailModal = async (id) => {
-            document.getElementById('lead-detail-modal').classList.remove('hidden'); document.getElementById('lead-detail-modal').classList.add('flex');
-            let data = allLeadsCache.find(l => l.id === id);
-            if (!data) {
-                if(useLocalStorage) data = JSON.parse(localStorage.getItem('sl_leads_data')||'{}')[id];
-                else { const s = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', id)); if(s.exists()) data = s.data(); }
-            }
-            if(data) {
-                document.getElementById('detail-summary').innerText = data.summary || "Esperando análisis...";
-                if (data.history) {
-                    document.getElementById('detail-history').innerHTML = Object.values(data.history).sort((a,b)=>a.ts-b.ts)
-                        .map(m=>`<div class="mb-2"><span class="font-bold ${m.role==='lucia'?'text-blue-600':'text-gray-800'}">${m.role === 'lucia' ? 'Lucía' : 'Cliente'}:</span> ${m.text}</div>`).join('');
-                }
-                const callBtn = document.getElementById('call-btn');
-                if (data.phone) {
-                    callBtn.innerHTML = `📞 Llamar a ${data.phone}`;
-                    callBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    callBtn.onclick = () => window.open(`tel:${data.phone}`);
-                    document.getElementById('detail-phone').innerText = data.phone;
-                    document.getElementById('contact-info').classList.remove('hidden');
-                } else {
-                    callBtn.innerHTML = "📞 Número No Disponible";
-                    callBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                    document.getElementById('contact-info').classList.add('hidden');
-                }
-            }
-        };
-        window.closeDetailModal = () => { document.getElementById('lead-detail-modal').classList.add('hidden'); document.getElementById('lead-detail-modal').classList.remove('flex'); };
-        window.toggleHistory = () => document.getElementById('detail-history').classList.toggle('hidden');
-
-        function renderLeadsTable() {
-            const tbody = document.getElementById('leads-table-body');
-            const emptyState = document.getElementById('empty-state');
-            tbody.innerHTML = '';
-            
-            const filtered = allLeadsCache.filter(l => {
-                return l.status === '🔥 CALIENTE' || (l.summary && l.summary.length > 20);
-            });
-
-            if (filtered.length === 0) { emptyState.classList.remove('hidden'); } else { emptyState.classList.add('hidden'); }
-
-            const hotCount = allLeadsCache.filter(l => l.status === '🔥 CALIENTE').length;
-            const badge = document.getElementById('badge-hot');
-            if (hotCount > 0) { badge.innerText = hotCount; badge.classList.remove('hidden'); } else badge.classList.add('hidden');
-
-            filtered.forEach(l => {
-                const ts = l.updatedAt?.seconds ? (l.updatedAt.seconds * 1000) : (typeof l.updatedAt === 'number' ? l.updatedAt : Date.now());
-                const d = new Date(ts).toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
-
-                let name = l.summary?.split("Nombre:")[1]?.split("\n")[0] || "Prospecto";
-                if(name.length > 25) name = "Prospecto";
-                
-                let interes = "General";
-                if (l.summary && l.summary.toLowerCase().includes("funeral")) interes = "Funeral";
-                else if (l.summary && l.summary.toLowerCase().includes("deuda")) interes = "Deudas";
-
-                tbody.innerHTML += `
-                    <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                        <td class="p-4 text-[11px] text-gray-400 font-mono">${d}</td>
-                        <td class="p-4 font-bold text-sm text-slate-700">${name}</td>
-                        <td class="p-4 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg w-fit px-2 py-1 inline-block">${interes}</td>
-                        <td class="p-4 text-right"><button onclick="openDetailModal('${l.id}')" class="text-white bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm">Ver Ficha</button></td>
-                    </tr>`;
-            });
-        }
-
-        window.showToast = (msg) => {
-            const toast = document.getElementById('toast');
-            if(msg) toast.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                </svg>
-                ${msg}
-            `;
-            toast.classList.add('show');
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
-        };
-        
-        window.manualRefresh = function() {
-            loadLeads();
-            window.showToast("Datos Actualizados");
-        }
-
-        function loadLeads() {
-            if (useLocalStorage) { 
-                allLeadsCache = getLocalLeads(); 
-                renderLeadsTable(); 
-            } 
-            else {
-                try {
-                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'leads'), snap => {
-                        let data = []; 
-                        snap.forEach(d => data.push({id:d.id, ...d.data()}));
-                        allLeadsCache = data.sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0));
-                        renderLeadsTable();
-                    }, (err) => { console.warn("Error cargando leads:", err); });
-                } catch(e) { console.warn("Error snapshot", e); }
-            }
-        }
-
-        async function save(txt, role, status = null) {
-            // ✅ FIX: incluir userId SIEMPRE (para tus Rules)
-            const data = { 
-                userId: currentUser?.uid,
-                lastMessage: txt,
-                [`history.${Date.now()}`]: { role, text: txt, ts: Date.now() },
-                updatedAt: useLocalStorage ? Date.now() : serverTimestamp()
-            };
-            if(status) data.status = status;
-
-            if(useLocalStorage) { saveLocalLead(data); }
-            else if (currentUser) {
-                try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), data); } 
-                catch (e) { console.warn("Error guardando msg", e); saveLocalLead(data); }
-            }
-        }
-
-        async function analyzeLead() {
-            const models = ["gemini-1.5-flash", "gemini-2.5-flash-preview-09-2025"];
-            const prompt = `
-            ANALIZA el chat y extrae DATOS PUROS en formato JSON estricto:
-            {
-                "name": "Nombre",
-                "age": "Edad (solo número)",
-                "state": "FL o TX",
-                "phone": "Numero o null",
-                "summary": "Resumen narrativo"
-            }
-            `;
-            for (const m of models) {
-                try {
-                    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${API_KEY}`, {
-                        method: 'POST',
-                        headers: {'Content-Type':'application/json'},
-                        body: JSON.stringify({ contents: [...chatHistory, { role: "user", parts: [{ text: prompt }] }] })
-                    });
-                    if(!r.ok) continue;
-                    const d = await r.json();
-                    const raw = d.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim();
-                    const json = JSON.parse(raw);
-                    
-                    const updateData = { 
-                        summary: json.summary,
-                        extractedName: json.name,
-                        extractedAge: json.age,
-                        extractedState: json.state,
-                        phone: json.phone !== "null" ? json.phone : null
-                    };
-
-                    if(useLocalStorage) saveLocalLead(updateData);
-                    else await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), updateData);
-                    break;
-                } catch(e){ console.error("Error analizando:", e); }
-            }
-        }
-
-        function appendMessageBubble(role, text, shouldSave = true) {
-            const isClosing = text.includes("[CONECTAR_JORGE]");
-            let cleanText = text.replace("[CONECTAR_JORGE]", "").replace(/\[CALIENTE\]/g, "");
-            let buttons = null;
-
-            if (role === 'lucia') {
-                const regex = /\[BOTONES:\s*(.*?)\]/i;
-                const match = cleanText.match(regex);
-                if (match) {
-                    buttons = match[1].split(',').map(s => s.replace(/[\*\_\[\]]/g, '').trim());
-                    cleanText = cleanText.replace(regex, "").trim();
-                }
-            }
-
-            const div = document.createElement('div'); div.className = `bubble ${role} shadow-sm`;
-            div.innerHTML = cleanText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
-            document.getElementById('chat-box').appendChild(div);
-            
-            if (buttons) {
-                const container = document.createElement('div');
-                container.className = "quick-actions-container";
-                buttons.forEach(opt => {
-                    const btn = document.createElement('button');
-                    btn.className = "quick-btn";
-                    btn.innerText = opt;
-                    btn.onclick = () => {
-                        container.remove();
-                        sendMessage(opt);
-                    };
-                    container.appendChild(btn);
-                });
-                document.getElementById('chat-box').appendChild(container);
-            }
-
-            div.scrollIntoView({ behavior: 'smooth' });
-            
-            if (isClosing) {
-                const b = document.createElement('div'); b.className = "ws-button"; b.innerHTML = "<span>Conectar con Jorge por WhatsApp</span>";
-                b.onclick = () => window.open(`https://wa.me/${JORGE_PHONE}?text=Hola Jorge, acabo de hablar con Lucía...`);
-                document.getElementById('chat-box').appendChild(b);
-
-                // ✅ status caliente + resumen (ya no fallará por userId)
-                if(shouldSave) { save(cleanText, role, '🔥 CALIENTE').then(() => analyzeLead()); }
-            } else if(shouldSave) { save(cleanText, role); }
-        }
-
-        async function sendMessage(manualText = null) {
-            const text = manualText || document.getElementById('user-input').value.trim();
-            if (!text) return;
-
-            appendMessageBubble('user', text);
-            document.getElementById('user-input').value = '';
-
-            document.getElementById('loading').classList.remove('hidden');
-            stepCount++;
-            chatHistory.push({ role: "user", parts: [{ text }] });
-            
-            const models = ["gemini-1.5-flash", "gemini-2.5-flash-preview-09-2025"];
-            let success = false;
-
-            for (const m of models) {
-                try {
-                    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${API_KEY}`, {
-                        method: 'POST',
-                        headers: {'Content-Type':'application/json'},
-                        body: JSON.stringify({
-                            contents: chatHistory,
-                            systemInstruction: { parts: [{ text: currentSystemPrompt }] }
-                        })
-                    });
-                    if(!r.ok) continue;
-                    const d = await r.json();
-                    const t = d.candidates[0].content.parts[0].text;
-
-                    document.getElementById('loading').classList.add('hidden');
-                    appendMessageBubble('lucia', t);
-                    chatHistory.push({ role: "model", parts: [{ text: t }] });
-
-                    success = true;
-                    break;
-                } catch (e) {}
-            }
-
-            if(!success) {
-                document.getElementById('loading').classList.add('hidden');
-                appendMessageBubble('lucia', "Hipo técnico. Inténtalo de nuevo.", false);
-            }
-        }
-        
-        window.sendMessage = sendMessage;
-
-        function saveLocalLead(data) {
-            const l = JSON.parse(localStorage.getItem('sl_leads_data')||'{}');
-            l[sessionId] = {...l[sessionId], ...data, id:sessionId, updatedAt:new Date().toISOString()};
-            localStorage.setItem('sl_leads_data', JSON.stringify(l));
-        }
-        function getLocalLeads() {
-            return Object.values(JSON.parse(localStorage.getItem('sl_leads_data')||'{}'))
-                .sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt));
-        }
-        
-        window.callProspect = () => {
-            const phone = document.getElementById('detail-phone').innerText;
-            if (phone && phone !== '--') window.open(`tel:${phone}`);
-        };
-    </script>
+  <script type="module" src="./assets/app.js"></script>
 </body>
 </html>
