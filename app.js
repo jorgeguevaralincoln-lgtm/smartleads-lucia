@@ -13,13 +13,17 @@ import {
  *  ========================= */
 const ADMIN_EMAIL = "asistentedebeneficios@gmail.com";
 
-// Tu Google Apps Script /exec
+// ✅ MODELO VIGENTE
+const GEMINI_MODEL = "gemini-2.5-flash-lite"; // rápido y estable
+// const GEMINI_MODEL = "gemini-2.5-flash";   // alternativa
+
+// Google Apps Script /exec
 const BOOKING_ENDPOINT = "https://script.google.com/macros/s/AKfycbwuxlLMkxyNpoXK81b1Xeqkn-LiDqdnV3z5T8UIyHJYYaIeV9jt-yhbrXBRbll5G_zc1Q/exec";
-const BOOKING_TOKEN = "sl_2026_seguro_89xK2P"; // <- obligatorio
+const BOOKING_TOKEN = "sl_2026_seguro_89xK2P"; // ✅ TU TOKEN
 
 const MEETING_MINUTES = 20;
 
-// Detectar timezone REAL del prospecto
+// Zona horaria real del prospecto (auto)
 const PROSPECT_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York";
 
 // WhatsApp del licenciado
@@ -184,18 +188,22 @@ onAuthStateChanged(auth, async (user) => {
   currentUser = user;
 
   // Crear lead base con userId para rules
-  await setDoc(
-    doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId),
-    {
-      userId: user.uid,
-      startedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      lastMessage: "Sesión iniciada",
-      status: "Navegando",
-      summary: "Pendiente..."
-    },
-    { merge: true }
-  );
+  try {
+    await setDoc(
+      doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId),
+      {
+        userId: user.uid,
+        startedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        lastMessage: "Sesión iniciada",
+        status: "Navegando",
+        summary: "Pendiente..."
+      },
+      { merge: true }
+    );
+  } catch (e) {
+    console.warn("No se pudo crear lead base:", e);
+  }
 
   await loadSettings();
 });
@@ -441,7 +449,7 @@ ANALIZA el chat y devuelve JSON estricto:
 `;
 
   try {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent?key=${API_KEY}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contents: [...chatHistory, { role: "user", parts: [{ text: prompt }] }] })
@@ -617,7 +625,9 @@ async function sendMessage(manualText = null) {
   chatHistory.push({ role: "user", parts: [{ text }] });
 
   try {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent?key=${API_KEY}`;
+
+    const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -625,6 +635,15 @@ async function sendMessage(manualText = null) {
         systemInstruction: { parts: [{ text: currentSystemPrompt || DEFAULT_PROMPT }] }
       })
     });
+
+    if (!r.ok) {
+      const errText = await r.text().catch(() => "");
+      console.error("Gemini error:", r.status, errText);
+      setLoading(false);
+      showToast("Error IA (ver consola)");
+      appendMessageBubble("lucia", "Disculpe, tuve un problema técnico. ¿Podría intentar de nuevo?", true);
+      return;
+    }
 
     const d = await r.json();
     const reply = d.candidates?.[0]?.content?.parts?.[0]?.text || "Disculpe, ¿podría repetirlo?";
@@ -634,8 +653,10 @@ async function sendMessage(manualText = null) {
     chatHistory.push({ role: "model", parts: [{ text: reply }] });
 
   } catch (e) {
+    console.error("Gemini fetch failed:", e);
     setLoading(false);
-    appendMessageBubble("lucia", "Hipo técnico. Inténtelo de nuevo.", true);
+    showToast("Error de red IA");
+    appendMessageBubble("lucia", "Disculpe, tuve un problema de conexión. ¿Podría intentar de nuevo?", true);
   }
 }
 
