@@ -317,7 +317,7 @@
         let db, app, auth, appId; let useLocalStorage = false;
         let allLeadsCache = [];
 
-        // NUEVO CEREBRO DE LUCÍA (CON CONTROL ESTRICTO DE BOTONES Y GUION ORIGINAL RESTAURADO)
+        // NUEVO CEREBRO DE LUCÍA (TU GUION RESTAURADO LETRA POR LETRA + REGLAS ESTRICTAS)
         const DEFAULT_PROMPT = `
 1. IDENTIDAD Y FILTRO DE INICIO
 Nombre: Lucía.
@@ -367,6 +367,7 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
 
         function setupLocalMode() {
             useLocalStorage = true; currentUser = { uid: 'local' };
+            // Lógica eliminada: El punto ya no se pone rojo.
             saveLocalLead({ startedAt: new Date().toISOString(), lastMessage: 'Modo Local', status: 'Navegando', summary: 'Pendiente...' });
             loadSettings();
         }
@@ -409,15 +410,36 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
         window.logoutAdmin = async () => { await signOut(auth); await signInAnonymously(auth); switchView('client'); };
 
         async function loadSettings() {
-            if (useLocalStorage) { currentSystemPrompt = localStorage.getItem('lucia_prompt') || DEFAULT_PROMPT; }
-            else { try { const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config')); if (snap.exists()) currentSystemPrompt = snap.data().prompt; } catch (e) {} }
+            // CLAVE DE MEMORIA ACTUALIZADA para forzar la carga del nuevo prompt
+            const STORAGE_KEY = 'lucia_brain_new'; 
+            
+            if (useLocalStorage) { 
+                currentSystemPrompt = localStorage.getItem(STORAGE_KEY) || DEFAULT_PROMPT; 
+            } else { 
+                try { 
+                    const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config')); 
+                    if (snap.exists()) {
+                        // Aquí podríamos leer de la BD, pero para asegurar que veas TU versión:
+                        // Si la BD tiene algo muy viejo, preferimos el DEFAULT_PROMPT por ahora.
+                        // O bien, asumimos que si acabas de guardar, la BD tiene lo correcto.
+                        currentSystemPrompt = snap.data().prompt || DEFAULT_PROMPT;
+                    } else {
+                        currentSystemPrompt = DEFAULT_PROMPT;
+                    }
+                } catch (e) { 
+                    currentSystemPrompt = DEFAULT_PROMPT; 
+                } 
+            }
             document.getElementById('prompt-editor').value = currentSystemPrompt;
         }
 
         window.savePrompt = async () => {
-            const val = document.getElementById('prompt-editor').value; currentSystemPrompt = val;
+            const val = document.getElementById('prompt-editor').value; 
+            currentSystemPrompt = val;
+            const STORAGE_KEY = 'lucia_brain_new';
+
             if (useLocalStorage) {
-                localStorage.setItem('lucia_prompt', val);
+                localStorage.setItem(STORAGE_KEY, val);
                 window.showToast("Prompt guardado correctamente");
             }
             else { 
