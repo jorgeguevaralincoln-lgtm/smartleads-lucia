@@ -1,6 +1,7 @@
-// app.js (COMPLETO) — Sin Apps Script / Sin API Calendar / Sin CORS
-// Mantiene diseño Apple. Botón de reserva redirige a Google Calendar link.
-// Genera resumen y lo guarda cuando el usuario hace click en "Reservar".
+// app.js (COMPLETO) — SIMPLE + RESERVA POR LINK + DASHBOARD
+// Fix 1: Gemini API v1 + modelos actuales (evita 404)
+// Fix 2: Firestore writes más robustos (ensureLeadExists + setDoc merge)
+// NO toca HTML/CSS (diseño Apple intacto)
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import {
@@ -26,15 +27,21 @@ import {
  *  ========================= */
 const ADMIN_EMAIL = "asistentedebeneficios@gmail.com";
 
-// Gemini key (como tu setup original)
+// Gemini key (tu setup)
 const P1 = "AIzaSyCjhXpHtovaqye6";
 const P2 = "O4r2ir2tT5lksOIrNfs";
 const API_KEY = P1 + P2;
 
-// Modelo
-const MODELS = ["gemini-1.5-flash", "gemini-2.5-flash-preview-09-2025"];
+// ✅ Gemini API v1 (evita 404 de v1beta con modelos retirados)
+const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1/models";
 
-// Link de reserva (fallback). Ideal: controlarlo desde el prompt con [BOOKING_URL:...]
+// ✅ Modelos actuales (poner primero el más barato/rápido)
+const MODELS = [
+  "gemini-2.5-flash-lite",
+  "gemini-2.5-flash",
+];
+
+// Link de reserva (fallback). Admin puede controlarlo en el prompt con [BOOKING_URL:...]
 const FALLBACK_BOOKING_URL = "https://calendar.app.google/FNtYzyNgGaA62mFA7";
 
 // Firebase config
@@ -48,12 +55,11 @@ const myFirebaseConfig = {
   measurementId: "G-KRMZBRX3JQ",
 };
 
-// AppId de Firestore
+// AppId Firestore (igual que tu estructura actual)
 const appId = "smartleads-prod";
 
-// Session (lead)
+// Lead/session
 const sessionId = crypto.randomUUID();
-localStorage.removeItem("sl_session_id");
 
 /** =========================
  *  STATE
@@ -61,15 +67,18 @@ localStorage.removeItem("sl_session_id");
 let app, auth, db;
 let currentUser = null;
 let isAdmin = false;
+let isReady = false; // ✅ evita enviar mensajes antes de auth+lead base
 
 let chatHistory = []; // para Gemini
 let currentSystemPrompt = "";
 let allLeadsCache = [];
 
 /** =========================
- *  PROMPT DEFAULT (Admin lo puede editar)
+ *  PROMPT DEFAULT
  *  ========================= */
 const DEFAULT_PROMPT = `
+[BOOKING_URL:${FALLBACK_BOOKING_URL}]
+
 1) IDENTIDAD
 Nombre: Lucía.
 Rol: Asistente de Beneficios (Seguros de Gastos Finales).
@@ -79,47 +88,32 @@ Tono: Respetuoso, calmado, sin presión. Máximo 3 líneas por mensaje. Use siem
 Educar, orientar y aclarar dudas. NO vender agresivo.
 Cuando el usuario esté listo, invitarlo a reservar una llamada con un Licenciado acreditado.
 
-3) REGLA DE RESERVA (SÚPER IMPORTANTE)
+3) REGLA DE RESERVA (CLAVE)
 - Lucía NO agenda citas.
 - Lucía NO confirma horarios.
 - Lucía NO valida disponibilidad.
-- Lucía SOLO muestra el botón de “Reservar” cuando el prospecto lo pide.
-
-Cuando el usuario diga “quiero una cita”, “quiero hablar con el licenciado”, “reservar”, etc:
-Responda breve y termine con:
+- Cuando el usuario pida cita o reservar, terminar con:
 [MOSTRAR_BOTON_RESERVA]
 
 4) BOTONES
 Solo use [BOTONES: ...] si el admin lo escribe literal.
-
-5) LINK DE RESERVA (editable por Admin)
-Pegue su link así (puede cambiarlo cuando quiera):
-[BOOKING_URL:${FALLBACK_BOOKING_URL}]
 `;
 
 /** =========================
  *  DOM helpers
  *  ========================= */
-function $(id) {
-  return document.getElementById(id);
-}
-
-function safeText(v) {
-  return String(v ?? "");
-}
+function $(id) { return document.getElementById(id); }
+function safeText(v) { return String(v ?? ""); }
 
 function showToast(msg) {
   const toast = $("toast");
   if (!toast) return;
-
-  if (msg) {
-    toast.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-      </svg>
-      <span>${safeText(msg)}</span>
-    `;
-  }
+  toast.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+    </svg>
+    <span>${safeText(msg)}</span>
+  `;
   toast.classList.add("show");
   setTimeout(() => toast.classList.remove("show"), 2500);
 }
@@ -133,7 +127,6 @@ function setLoading(on) {
 
 /** =========================
  *  Extract booking url from prompt
- *  Format: [BOOKING_URL:https://...]
  *  ========================= */
 function extractBookingUrlFromPrompt(promptText) {
   const p = safeText(promptText);
@@ -158,13 +151,40 @@ function parseButtonsTag(text) {
 }
 
 /** =========================
- *  Lead save
+ *  Firestore helpers
  *  ========================= */
+function leadRef() {
+  return doc(db, "artifacts", appId, "public", "data", "leads", sessionId);
+}
+
+async function ensureLeadExists() {
+  if (!db || !currentUser) return;
+
+  // Crea el doc base si no existe
+  try {
+    const snap = await getDoc(leadRef());
+    if (snap.exists()) return;
+
+    await setDoc(leadRef(), {
+      userId: currentUser.uid,
+      startedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      lastMessage: "Sesión iniciada",
+      status: "Navegando",
+      summary: "Pendiente...",
+    }, { merge: true });
+  } catch (e) {
+    console.warn("ensureLeadExists error:", e);
+  }
+}
+
 async function saveMessage(txt, role, extra = {}) {
   if (!db || !currentUser) return;
 
+  await ensureLeadExists();
+
   const payload = {
-    userId: currentUser.uid,
+    userId: currentUser.uid, // importante para reglas
     lastMessage: txt,
     [`history.${Date.now()}`]: { role, text: txt, ts: Date.now() },
     updatedAt: serverTimestamp(),
@@ -172,18 +192,15 @@ async function saveMessage(txt, role, extra = {}) {
   };
 
   try {
-    await updateDoc(
-      doc(db, "artifacts", appId, "public", "data", "leads", sessionId),
-      payload
-    );
+    // setDoc merge funciona incluso si algo falló antes
+    await setDoc(leadRef(), payload, { merge: true });
   } catch (e) {
     console.warn("Error guardando msg:", e);
   }
 }
 
 /** =========================
- *  Lead analyzer (resumen + datos)
- *  Se ejecuta al hacer click en Reservar.
+ *  Lead analyzer (resumen)
  *  ========================= */
 async function analyzeLead() {
   const prompt = `
@@ -200,18 +217,15 @@ ANALIZA el chat completo y devuelve JSON estricto:
 }
 `;
 
-  for (const m of MODELS) {
+  for (const model of MODELS) {
     try {
-      const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [...chatHistory, { role: "user", parts: [{ text: prompt }] }],
-          }),
-        }
-      );
+      const r = await fetch(`${GEMINI_BASE}/${model}:generateContent?key=${API_KEY}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [...chatHistory, { role: "user", parts: [{ text: prompt }] }],
+        }),
+      });
 
       if (!r.ok) continue;
       const d = await r.json();
@@ -233,67 +247,46 @@ ANALIZA el chat completo y devuelve JSON estricto:
         summary: json.summary || "Prospecto listo para reservar. Revisar conversación.",
       };
 
-      // Guardar resumen en el lead
-      await updateDoc(
-        doc(db, "artifacts", appId, "public", "data", "leads", sessionId),
-        { ...updateData, updatedAt: serverTimestamp() }
-      );
-
+      await setDoc(leadRef(), { ...updateData, updatedAt: serverTimestamp() }, { merge: true });
       return updateData;
     } catch (e) {
-      console.error("analyzeLead error:", e);
+      console.warn("analyzeLead error:", e);
     }
   }
 
-  // fallback
-  const fallback = {
-    summary: "Prospecto listo para reservar. Revisar conversación.",
-  };
-  try {
-    await updateDoc(
-      doc(db, "artifacts", appId, "public", "data", "leads", sessionId),
-      { ...fallback, updatedAt: serverTimestamp() }
-    );
-  } catch {}
+  const fallback = { summary: "Prospecto listo para reservar. Revisar conversación." };
+  await setDoc(leadRef(), { ...fallback, updatedAt: serverTimestamp() }, { merge: true });
   return fallback;
 }
 
 /** =========================
- *  Booking button flow
- *  (1) genera resumen
- *  (2) marca lead como RESERVA
- *  (3) abre link
+ *  Booking click flow
  *  ========================= */
 async function finalizeAndRedirectToBooking() {
   try {
     setLoading(true);
 
-    // 1) Generar resumen
+    await ensureLeadExists();
     const lead = await analyzeLead();
 
-    // 2) Marcar lead como "📅 RESERVA" para el dashboard
     const bookingUrl = extractBookingUrlFromPrompt(currentSystemPrompt);
-    await updateDoc(
-      doc(db, "artifacts", appId, "public", "data", "leads", sessionId),
-      {
-        status: "📅 RESERVA",
-        bookingClickedAt: serverTimestamp(),
-        bookingUrl,
-        extractedName: lead.extractedName ?? null,
-        phone: lead.phone ?? null,
-        updatedAt: serverTimestamp(),
-      }
-    );
+
+    await setDoc(leadRef(), {
+      status: "📅 RESERVA",
+      bookingClickedAt: serverTimestamp(),
+      bookingUrl,
+      extractedName: lead.extractedName ?? null,
+      phone: lead.phone ?? null,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
 
     setLoading(false);
 
-    // 3) Redirigir
     window.open(bookingUrl, "_blank", "noopener,noreferrer");
   } catch (e) {
-    console.error("finalizeAndRedirectToBooking error:", e);
+    console.warn("finalizeAndRedirectToBooking error:", e);
     setLoading(false);
-    showToast("No se pudo guardar el resumen");
-    // Igual lo redirigimos para no frenar al prospecto
+    // Igual redirige para no frenar al prospecto
     const bookingUrl = extractBookingUrlFromPrompt(currentSystemPrompt);
     window.open(bookingUrl, "_blank", "noopener,noreferrer");
   }
@@ -301,23 +294,18 @@ async function finalizeAndRedirectToBooking() {
 
 /** =========================
  *  Append bubble
- *  - Muestra botón cuando Lucía envía [MOSTRAR_BOTON_RESERVA]
  *  ========================= */
 function appendMessageBubble(role, text, shouldSave = true) {
   const raw = safeText(text);
 
-  // Señales de botón
   const showBookingBtn =
-    raw.includes("[MOSTRAR_BOTON_RESERVA]") || raw.includes("[CONECTAR_JORGE]");
+    raw.includes("[MOSTRAR_BOTON_RESERVA]");
 
-  // Limpieza
   let cleanText = raw
     .replace("[MOSTRAR_BOTON_RESERVA]", "")
-    .replace("[CONECTAR_JORGE]", "")
     .replace(/\[CALIENTE\]/g, "")
     .trim();
 
-  // Extraer [BOTONES: ...] solo en mensajes de Lucía
   let buttons = null;
   if (role === "lucia") {
     const parsed = parseButtonsTag(cleanText);
@@ -333,7 +321,6 @@ function appendMessageBubble(role, text, shouldSave = true) {
 
   $("chat-box")?.appendChild(div);
 
-  // Render buttons
   if (buttons?.length) {
     const container = document.createElement("div");
     container.className = "quick-actions-container";
@@ -352,7 +339,6 @@ function appendMessageBubble(role, text, shouldSave = true) {
 
   div.scrollIntoView({ behavior: "smooth" });
 
-  // Render booking button (Apple style existing)
   if (role === "lucia" && showBookingBtn) {
     const b = document.createElement("div");
     b.className = "ws-button";
@@ -366,27 +352,24 @@ function appendMessageBubble(role, text, shouldSave = true) {
 }
 
 /** =========================
- *  Gemini response
+ *  Gemini reply
  *  ========================= */
 async function getGeminiReply() {
-  for (const m of MODELS) {
+  for (const model of MODELS) {
     try {
-      const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: chatHistory,
-            systemInstruction: { parts: [{ text: currentSystemPrompt || DEFAULT_PROMPT }] },
-          }),
-        }
-      );
+      const r = await fetch(`${GEMINI_BASE}/${model}:generateContent?key=${API_KEY}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: chatHistory,
+          systemInstruction: { parts: [{ text: currentSystemPrompt || DEFAULT_PROMPT }] },
+        }),
+      });
 
       if (!r.ok) continue;
       const d = await r.json();
       return safeText(d?.candidates?.[0]?.content?.parts?.[0]?.text) || "Disculpe, ¿podría repetirlo?";
-    } catch {}
+    } catch (e) {}
   }
   return "Disculpe, ¿podría repetirlo?";
 }
@@ -395,6 +378,11 @@ async function getGeminiReply() {
  *  sendMessage
  *  ========================= */
 async function sendMessage(manualText = null) {
+  if (!isReady) {
+    showToast("Cargando... intente en 1 segundo");
+    return;
+  }
+
   const input = $("user-input");
   const text = manualText || safeText(input?.value).trim();
   if (!text) return;
@@ -403,7 +391,6 @@ async function sendMessage(manualText = null) {
   if (input) input.value = "";
 
   setLoading(true);
-
   chatHistory.push({ role: "user", parts: [{ text }] });
 
   try {
@@ -413,7 +400,6 @@ async function sendMessage(manualText = null) {
     appendMessageBubble("lucia", reply, true);
     chatHistory.push({ role: "model", parts: [{ text: reply }] });
   } catch (e) {
-    console.error(e);
     setLoading(false);
     appendMessageBubble("lucia", "Disculpe, tuve un problema técnico. ¿Podría intentar de nuevo?", true);
   }
@@ -421,20 +407,18 @@ async function sendMessage(manualText = null) {
 window.sendMessage = sendMessage;
 
 /** =========================
- *  Admin: Login + Views
+ *  Admin login / views
  *  ========================= */
 window.openLoginModal = () => {
   const modal = $("login-modal");
   modal?.classList.remove("hidden");
   modal?.classList.add("flex");
 };
-
 window.closeLoginModal = () => {
   const modal = $("login-modal");
   modal?.classList.add("hidden");
   modal?.classList.remove("flex");
 };
-
 window.performLogin = async () => {
   const email = safeText($("admin-email")?.value).trim();
   const pass = safeText($("admin-pass")?.value);
@@ -451,7 +435,6 @@ window.performLogin = async () => {
     }
   }
 };
-
 window.logoutAdmin = async () => {
   await signOut(auth);
   await signInAnonymously(auth);
@@ -464,7 +447,6 @@ window.switchView = (v) => {
   if (v === "admin") {
     $("admin-view")?.classList.add("flex");
     loadLeads();
-    // Mostrar por defecto leads
     window.showAdminTab("leads");
   }
 };
@@ -487,7 +469,7 @@ window.showAdminTab = (t) => {
 };
 
 /** =========================
- *  Settings (Prompt)
+ *  Settings prompt
  *  ========================= */
 async function loadSettings() {
   const backupPrompt = localStorage.getItem("lucia_brain_backup_v2");
@@ -496,7 +478,6 @@ async function loadSettings() {
     const snap = await getDoc(
       doc(db, "artifacts", appId, "public", "data", "settings", "config")
     );
-
     if (snap.exists()) currentSystemPrompt = snap.data().prompt || DEFAULT_PROMPT;
     else currentSystemPrompt = backupPrompt || DEFAULT_PROMPT;
   } catch (e) {
@@ -507,10 +488,8 @@ async function loadSettings() {
 }
 
 window.savePrompt = async () => {
-  if (!isAdmin) {
-    showToast("No autorizado");
-    return;
-  }
+  if (!isAdmin) { showToast("No autorizado"); return; }
+
   const val = safeText($("prompt-editor")?.value);
   currentSystemPrompt = val;
   localStorage.setItem("lucia_brain_backup_v2", val);
@@ -523,15 +502,22 @@ window.savePrompt = async () => {
     );
     showToast("Configuración guardada");
   } catch (e) {
-    console.error("Save error:", e);
     showToast("Guardado local (falló nube)");
   }
 };
 
 /** =========================
- *  Leads table (Admin)
- *  - muestra SOLO los que hicieron click en Reservar (status 📅 RESERVA)
+ *  Admin leads dashboard
  *  ========================= */
+function escapeHtml(str) {
+  return safeText(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function renderLeadsTable() {
   const tbody = $("leads-table-body");
   const emptyState = $("empty-state");
@@ -540,6 +526,7 @@ function renderLeadsTable() {
 
   tbody.innerHTML = "";
 
+  // Solo los que hicieron click en reservar
   const filtered = allLeadsCache.filter((l) => l.status === "📅 RESERVA");
 
   if (emptyState) {
@@ -561,24 +548,17 @@ function renderLeadsTable() {
       Date.now();
 
     const d = new Date(ts).toLocaleString([], {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+      month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
     });
 
     let name = l.extractedName || "Prospecto";
     if (name.length > 28) name = "Prospecto";
 
-    let interes = "Reserva";
-    if (safeText(l.summary).toLowerCase().includes("funeral")) interes = "Funeral";
-    else if (safeText(l.summary).toLowerCase().includes("deuda")) interes = "Deudas";
-
     tbody.innerHTML += `
       <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
         <td class="p-4 text-[11px] text-gray-400 font-mono">${d}</td>
         <td class="p-4 font-bold text-sm text-slate-700">${escapeHtml(name)}</td>
-        <td class="p-4 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg w-fit px-2 py-1 inline-block">${escapeHtml(interes)}</td>
+        <td class="p-4 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg w-fit px-2 py-1 inline-block">Reserva</td>
         <td class="p-4 text-right">
           <button onclick="openDetailModal('${l.id}')" class="text-white bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm">
             Ver Ficha
@@ -587,15 +567,6 @@ function renderLeadsTable() {
       </tr>
     `;
   });
-}
-
-function escapeHtml(str) {
-  return safeText(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
 }
 
 function loadLeads() {
@@ -618,11 +589,7 @@ function loadLeads() {
   }
 }
 
-window.manualRefresh = () => {
-  if (!isAdmin) return;
-  loadLeads();
-  showToast("Datos actualizados");
-};
+window.manualRefresh = () => { if (!isAdmin) return; loadLeads(); showToast("Datos actualizados"); };
 
 /** =========================
  *  Lead detail modal
@@ -681,24 +648,15 @@ window.closeDetailModal = () => {
 window.toggleHistory = () => $("detail-history")?.classList.toggle("hidden");
 
 /** =========================
- *  Init Firebase + Auth
+ *  INIT
  *  ========================= */
 function init() {
   app = initializeApp(myFirebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
 
-  // Form submit
-  $("chat-form")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    sendMessage();
-  });
-
-  // Login submit (si tu HTML usa performLogin en onsubmit, esto es extra-seguro)
-  $("login-form")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    window.performLogin();
-  });
+  $("chat-form")?.addEventListener("submit", (e) => { e.preventDefault(); sendMessage(); });
+  $("login-form")?.addEventListener("submit", (e) => { e.preventDefault(); window.performLogin(); });
 
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
@@ -709,28 +667,14 @@ function init() {
     currentUser = user;
     isAdmin = !!user.email && user.email.toLowerCase() === ADMIN_EMAIL;
 
-    // Crear lead base para anónimos
-    if (user.isAnonymous) {
-      try {
-        await setDoc(
-          doc(db, "artifacts", appId, "public", "data", "leads", sessionId),
-          {
-            userId: user.uid,
-            startedAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            lastMessage: "Sesión iniciada",
-            status: "Navegando",
-            summary: "Pendiente...",
-          },
-          { merge: true }
-        );
-      } catch (e) {
-        console.warn("No se pudo crear lead base:", e);
-      }
-    }
-
     await loadSettings();
+    await ensureLeadExists();
+
+    isReady = true; // ✅ ya puede enviar mensajes
   });
+
+  // iniciar auth
+  signInAnonymously(auth).catch(() => {});
 }
 
 init();
