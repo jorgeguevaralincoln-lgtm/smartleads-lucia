@@ -99,11 +99,12 @@
         .badge-fl { background-color: #FEF3C7; color: #D97706; border: 1px solid #FCD34D; }
         .badge-tx { background-color: #DBEAFE; color: #1D4ED8; border: 1px solid #93C5FD; }
 
+        /* Notificación Toast Centrada */
         .toast-notification {
             position: fixed; 
             top: 20px; 
-            left: 50%; 
-            transform: translateX(-50%) translateY(-100px); 
+            left: 50%; /* Centrado horizontal */
+            transform: translateX(-50%) translateY(-100px); /* Oculto arriba */
             background: #34C759; color: white;
             padding: 12px 24px; border-radius: 16px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.15);
@@ -121,6 +122,7 @@
 </head>
 <body class="flex items-center justify-center min-h-screen bg-gray-100">
 
+    <!-- Notificación Toast -->
     <div id="toast" class="toast-notification">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
@@ -205,11 +207,10 @@
                 <p class="text-[10px] text-slate-400 font-medium">Panel de Control</p>
             </div>
             
-            <button onclick="manualRefresh()" class="bg-blue-800 hover:bg-blue-700 text-white p-2 rounded-full shadow-md transition-all active:scale-90" title="Refrescar Datos">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-            </button>
-
             <div class="flex items-center gap-2">
+                <button onclick="manualRefresh()" class="bg-blue-800 hover:bg-blue-700 text-white p-2 rounded-full shadow-md transition-all active:scale-90" title="Refrescar Datos">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                </button>
                 <button onclick="showAdminTab('leads')" id="nav-leads" class="text-white bg-white/10 px-4 py-2 rounded-lg text-sm font-bold">Leads</button>
                 <button onclick="showAdminTab('training')" id="nav-training" class="text-slate-400 hover:text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">IA</button>
                 <button onclick="logoutAdmin()" class="bg-red-500/20 text-red-300 hover:bg-red-500/30 px-4 py-2 rounded-lg text-xs font-bold ml-2">Salir</button>
@@ -254,7 +255,8 @@
                 </div>
                 <textarea id="prompt-editor" class="w-full h-80 p-4 border border-gray-200 rounded-xl font-sans text-sm leading-relaxed focus:border-blue-500 outline-none resize-none"></textarea>
                 <div class="mt-4 flex justify-end">
-                    <button onclick="savePrompt()" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">Guardar</button>
+                    <!-- Botón Negro Profesional -->
+                    <button onclick="savePrompt()" class="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">Guardar Configuración</button>
                 </div>
             </div>
         </div>
@@ -313,13 +315,13 @@
         let db, app, auth, appId; let useLocalStorage = false;
         let allLeadsCache = [];
 
-        // --- CEREBRO DURO ESTABILIZADO (TU VERSIÓN CORRECTA) ---
+        // --- CEREBRO DURO ESTABILIZADO (TU GUION HÍBRIDO + REGLAS DE SEGURIDAD) ---
         const DEFAULT_PROMPT = `
 1. IDENTIDAD Y FILTRO DE INICIO
 Nombre: Lucía.
 Rol: Asistente de beneficios.
 Tono: Respetuoso, sutil y breve (máximo 3 líneas por mensaje). Usa siempre "Usted".
-Mensaje de Bienvenida (El Filtro): "Hola, soy Lucía, su Asistente de beneficios. Mi labor es ayudarle a tomar decisiones acertadas para su familia. Toda su información es privada y nada se compartirá sin su permiso. ¿Desea continuar para conocer sus beneficios?"
+*NOTA IMPORTANTE: El mensaje de bienvenida ya se mostró en pantalla. El usuario acaba de responder SÍ o NO.*
 
 2. FLUJO DE CONVERSACIÓN (Si responde SÍ)
 Paso 1 (Respeto): Pregunta el trato preferido: “¿Cómo prefiere que le llame, Señor/Señora [Nombre] o por su nombre?”.
@@ -352,12 +354,19 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
         let currentSystemPrompt = DEFAULT_PROMPT;
 
         try {
-            if (myFirebaseConfig.apiKey) {
-                app = initializeApp(myFirebaseConfig); appId = 'smartleads-prod'; 
-                auth = getAuth(app); db = getFirestore(app);
-            } else if (isInCanvas) {
-                app = initializeApp(JSON.parse(__firebase_config)); appId = 'smartleads-app';
-                auth = getAuth(app); db = getFirestore(app);
+            // FIX: Prioritize Canvas Environment Config
+            if (typeof __firebase_config !== 'undefined') {
+                const config = JSON.parse(__firebase_config);
+                app = initializeApp(config);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app';
+            } 
+            else if (myFirebaseConfig && myFirebaseConfig.apiKey) {
+                app = initializeApp(myFirebaseConfig); 
+                appId = 'smartleads-prod'; 
+                auth = getAuth(app); 
+                db = getFirestore(app);
             } else { throw "local"; }
         } catch (e) { setupLocalMode(); }
 
@@ -403,7 +412,7 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
         window.logoutAdmin = async () => { await signOut(auth); await signInAnonymously(auth); switchView('client'); };
 
         async function loadSettings() {
-            // CLAVE ESTABLE - Asegura que leemos lo guardado y no versiones fantasma
+            // RUTA ESTÁTICA Y SEGURA: Siempre lee de 'settings/config'
             const STORAGE_PATH = 'settings/config'; 
             
             if (useLocalStorage) { 
@@ -412,7 +421,7 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
                 try { 
                     const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config')); 
                     if (snap.exists()) {
-                        // Si existe config guardada, úsala. Si no, usa el DEFAULT correcto.
+                        // SIEMPRE prioriza lo que guardaste en la DB. Si está vacío, usa el DEFAULT.
                         currentSystemPrompt = snap.data().prompt || DEFAULT_PROMPT;
                     } else {
                         currentSystemPrompt = DEFAULT_PROMPT;
@@ -425,6 +434,8 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
         }
 
         window.savePrompt = async () => {
+            if (!currentUser) return; // Validación de seguridad
+            
             const val = document.getElementById('prompt-editor').value; 
             currentSystemPrompt = val;
             
@@ -437,7 +448,8 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
                     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { prompt: val }, { merge: true }); 
                     window.showToast("Prompt guardado correctamente"); 
                 } catch (e) { 
-                    alert("⚠️ Error de permisos"); 
+                    console.error("Save error:", e);
+                    window.showToast("Error al guardar (Permisos)");
                 } 
             }
         };
