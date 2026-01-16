@@ -1,3 +1,7 @@
+// app.js (COMPLETO) — Sin Apps Script / Sin API Calendar / Sin CORS
+// Mantiene diseño Apple. Botón de reserva redirige a Google Calendar link.
+// Genera resumen y lo guarda cuando el usuario hace click en "Reservar".
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import {
   getAuth,
@@ -22,30 +26,18 @@ import {
  *  ========================= */
 const ADMIN_EMAIL = "asistentedebeneficios@gmail.com";
 
-// ✅ Modelo vigente
-const GEMINI_MODEL = "gemini-2.5-flash-lite";
-// const GEMINI_MODEL = "gemini-2.5-flash";
-
-// Apps Script Booking
-const BOOKING_ENDPOINT =
-  "https://script.google.com/macros/s/AKfycbwuxlLMkxyNpoXK81b1Xeqkn-LiDqdnV3z5T8UIyHJYYaIeV9jt-yhbrXBRbll5G_zc1Q/exec";
-const BOOKING_TOKEN = "sl_2026_seguro_89xK2P";
-
-const MEETING_MINUTES = 20;
-
-// TZ del prospecto (browser)
-const PROSPECT_TZ =
-  Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York";
-
-// WhatsApp del licenciado
-const LIC_PHONE = "14079553077";
-
-// Gemini API KEY (como tu código original)
+// Gemini key (como tu setup original)
 const P1 = "AIzaSyCjhXpHtovaqye6";
 const P2 = "O4r2ir2tT5lksOIrNfs";
 const API_KEY = P1 + P2;
 
-// Firebase
+// Modelo
+const MODELS = ["gemini-1.5-flash", "gemini-2.5-flash-preview-09-2025"];
+
+// Link de reserva (fallback). Ideal: controlarlo desde el prompt con [BOOKING_URL:...]
+const FALLBACK_BOOKING_URL = "https://calendar.app.google/FNtYzyNgGaA62mFA7";
+
+// Firebase config
 const myFirebaseConfig = {
   apiKey: "AIzaSyA_-x6UEEVEJ7uAY8ohCrDussZ938QQ0B0",
   authDomain: "luciaai-46c75.firebaseapp.com",
@@ -56,50 +48,82 @@ const myFirebaseConfig = {
   measurementId: "G-KRMZBRX3JQ",
 };
 
+// AppId de Firestore
+const appId = "smartleads-prod";
+
+// Session (lead)
+const sessionId = crypto.randomUUID();
+localStorage.removeItem("sl_session_id");
+
 /** =========================
  *  STATE
  *  ========================= */
-const sessionId = crypto.randomUUID();
-
-let app = null;
-let auth = null;
-let db = null;
-let appId = "smartleads-prod";
+let app, auth, db;
 let currentUser = null;
+let isAdmin = false;
 
-let chatHistory = [];
+let chatHistory = []; // para Gemini
 let currentSystemPrompt = "";
 let allLeadsCache = [];
 
-// Agenda mode
-let awaitingAppointment = false; // se activa cuando Lucía pone [AGENDAR_CITA]
-let pendingSuggestions = []; // ISO list (2 opciones)
-
 /** =========================
- *  PROMPT (fallback)
+ *  PROMPT DEFAULT (Admin lo puede editar)
  *  ========================= */
 const DEFAULT_PROMPT = `
+1) IDENTIDAD
 Nombre: Lucía.
-Rol: Asistente de Beneficios (Gastos Finales).
-Tono: Respetuoso, breve, calmado. Use siempre "Usted". Sin presión.
-Objetivo: Educar y orientar. Si el prospecto desea hablar con un Licenciado, solicitar día y hora.
+Rol: Asistente de Beneficios (Seguros de Gastos Finales).
+Tono: Respetuoso, calmado, sin presión. Máximo 3 líneas por mensaje. Use siempre “Usted”.
 
-REGLA DE AGENDA:
-- Solo cuando el prospecto quiera una cita o el siguiente paso, pregunte EXACTAMENTE:
-"Perfecto. ¿Qué día y a qué hora le conviene para una llamada corta?"
-- Al final del mensaje agregue: [AGENDAR_CITA]
+2) OBJETIVO
+Educar, orientar y aclarar dudas. NO vender agresivo.
+Cuando el usuario esté listo, invitarlo a reservar una llamada con un Licenciado acreditado.
 
-REGLAS:
-- No confirme citas sin confirmación del sistema.
-- No invente disponibilidad.
+3) REGLA DE RESERVA (SÚPER IMPORTANTE)
+- Lucía NO agenda citas.
+- Lucía NO confirma horarios.
+- Lucía NO valida disponibilidad.
+- Lucía SOLO muestra el botón de “Reservar” cuando el prospecto lo pide.
+
+Cuando el usuario diga “quiero una cita”, “quiero hablar con el licenciado”, “reservar”, etc:
+Responda breve y termine con:
+[MOSTRAR_BOTON_RESERVA]
+
+4) BOTONES
+Solo use [BOTONES: ...] si el admin lo escribe literal.
+
+5) LINK DE RESERVA (editable por Admin)
+Pegue su link así (puede cambiarlo cuando quiera):
+[BOOKING_URL:${FALLBACK_BOOKING_URL}]
 `;
 
 /** =========================
- *  HELPERS: UI
+ *  DOM helpers
  *  ========================= */
 function $(id) {
   return document.getElementById(id);
 }
+
+function safeText(v) {
+  return String(v ?? "");
+}
+
+function showToast(msg) {
+  const toast = $("toast");
+  if (!toast) return;
+
+  if (msg) {
+    toast.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+      </svg>
+      <span>${safeText(msg)}</span>
+    `;
+  }
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 2500);
+}
+window.showToast = showToast;
 
 function setLoading(on) {
   const el = $("loading");
@@ -107,59 +131,197 @@ function setLoading(on) {
   el.classList.toggle("hidden", !on);
 }
 
-function showToast(msg) {
-  const toast = $("toast");
-  if (!toast) return;
-  if (msg) {
-    toast.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-      </svg>
-      ${msg}
-    `;
-  }
-  toast.classList.add("show");
-  setTimeout(() => toast.classList.remove("show"), 3000);
-}
-window.showToast = showToast;
-
-function formatIsoForUser(iso) {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleString("es-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
+/** =========================
+ *  Extract booking url from prompt
+ *  Format: [BOOKING_URL:https://...]
+ *  ========================= */
+function extractBookingUrlFromPrompt(promptText) {
+  const p = safeText(promptText);
+  const m = p.match(/\[BOOKING_URL:\s*(https?:\/\/[^\]\s]+)\s*\]/i);
+  return m?.[1] || FALLBACK_BOOKING_URL;
 }
 
-function appendButtonsIfAny(text) {
+/** =========================
+ *  Buttons parser
+ *  ========================= */
+function parseButtonsTag(text) {
   const regex = /\[BOTONES:\s*(.*?)\]/i;
-  const match = text.match(regex);
-  if (!match) return { cleanText: text, buttons: null };
+  const match = safeText(text).match(regex);
+  if (!match) return { clean: text, buttons: null };
 
   const buttons = match[1]
     .split(",")
     .map((s) => s.replace(/[\*\_\[\]]/g, "").trim())
     .filter(Boolean);
 
-  return { cleanText: text.replace(regex, "").trim(), buttons };
+  return { clean: safeText(text).replace(regex, "").trim(), buttons };
 }
 
-function appendMessageBubble(role, text, shouldSave = true) {
-  // detect booking marker
-  const wantsBooking = (text || "").includes("[AGENDAR_CITA]");
-  let cleanText = (text || "").replace("[AGENDAR_CITA]", "").trim();
+/** =========================
+ *  Lead save
+ *  ========================= */
+async function saveMessage(txt, role, extra = {}) {
+  if (!db || !currentUser) return;
 
+  const payload = {
+    userId: currentUser.uid,
+    lastMessage: txt,
+    [`history.${Date.now()}`]: { role, text: txt, ts: Date.now() },
+    updatedAt: serverTimestamp(),
+    ...extra,
+  };
+
+  try {
+    await updateDoc(
+      doc(db, "artifacts", appId, "public", "data", "leads", sessionId),
+      payload
+    );
+  } catch (e) {
+    console.warn("Error guardando msg:", e);
+  }
+}
+
+/** =========================
+ *  Lead analyzer (resumen + datos)
+ *  Se ejecuta al hacer click en Reservar.
+ *  ========================= */
+async function analyzeLead() {
+  const prompt = `
+ANALIZA el chat completo y devuelve JSON estricto:
+{
+  "name": "Nombre o null",
+  "age": "Edad (solo número) o null",
+  "state": "Estado o null",
+  "phone": "Numero o null",
+  "why": "Motivo principal (breve) o null",
+  "health": "Salud/preexistencias (breve) o null",
+  "budget": "Presupuesto mensual (ej 40) o null",
+  "summary": "Resumen final (1 párrafo, claro para el licenciado)."
+}
+`;
+
+  for (const m of MODELS) {
+    try {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [...chatHistory, { role: "user", parts: [{ text: prompt }] }],
+          }),
+        }
+      );
+
+      if (!r.ok) continue;
+      const d = await r.json();
+
+      const raw = safeText(d?.candidates?.[0]?.content?.parts?.[0]?.text)
+        .replace(/```json|```/g, "")
+        .trim();
+
+      const json = JSON.parse(raw);
+
+      const updateData = {
+        extractedName: json.name || null,
+        extractedAge: json.age || null,
+        extractedState: json.state || null,
+        phone: json.phone && json.phone !== "null" ? json.phone : null,
+        extractedWhy: json.why || null,
+        extractedHealth: json.health || null,
+        extractedBudget: json.budget || null,
+        summary: json.summary || "Prospecto listo para reservar. Revisar conversación.",
+      };
+
+      // Guardar resumen en el lead
+      await updateDoc(
+        doc(db, "artifacts", appId, "public", "data", "leads", sessionId),
+        { ...updateData, updatedAt: serverTimestamp() }
+      );
+
+      return updateData;
+    } catch (e) {
+      console.error("analyzeLead error:", e);
+    }
+  }
+
+  // fallback
+  const fallback = {
+    summary: "Prospecto listo para reservar. Revisar conversación.",
+  };
+  try {
+    await updateDoc(
+      doc(db, "artifacts", appId, "public", "data", "leads", sessionId),
+      { ...fallback, updatedAt: serverTimestamp() }
+    );
+  } catch {}
+  return fallback;
+}
+
+/** =========================
+ *  Booking button flow
+ *  (1) genera resumen
+ *  (2) marca lead como RESERVA
+ *  (3) abre link
+ *  ========================= */
+async function finalizeAndRedirectToBooking() {
+  try {
+    setLoading(true);
+
+    // 1) Generar resumen
+    const lead = await analyzeLead();
+
+    // 2) Marcar lead como "📅 RESERVA" para el dashboard
+    const bookingUrl = extractBookingUrlFromPrompt(currentSystemPrompt);
+    await updateDoc(
+      doc(db, "artifacts", appId, "public", "data", "leads", sessionId),
+      {
+        status: "📅 RESERVA",
+        bookingClickedAt: serverTimestamp(),
+        bookingUrl,
+        extractedName: lead.extractedName ?? null,
+        phone: lead.phone ?? null,
+        updatedAt: serverTimestamp(),
+      }
+    );
+
+    setLoading(false);
+
+    // 3) Redirigir
+    window.open(bookingUrl, "_blank", "noopener,noreferrer");
+  } catch (e) {
+    console.error("finalizeAndRedirectToBooking error:", e);
+    setLoading(false);
+    showToast("No se pudo guardar el resumen");
+    // Igual lo redirigimos para no frenar al prospecto
+    const bookingUrl = extractBookingUrlFromPrompt(currentSystemPrompt);
+    window.open(bookingUrl, "_blank", "noopener,noreferrer");
+  }
+}
+
+/** =========================
+ *  Append bubble
+ *  - Muestra botón cuando Lucía envía [MOSTRAR_BOTON_RESERVA]
+ *  ========================= */
+function appendMessageBubble(role, text, shouldSave = true) {
+  const raw = safeText(text);
+
+  // Señales de botón
+  const showBookingBtn =
+    raw.includes("[MOSTRAR_BOTON_RESERVA]") || raw.includes("[CONECTAR_JORGE]");
+
+  // Limpieza
+  let cleanText = raw
+    .replace("[MOSTRAR_BOTON_RESERVA]", "")
+    .replace("[CONECTAR_JORGE]", "")
+    .replace(/\[CALIENTE\]/g, "")
+    .trim();
+
+  // Extraer [BOTONES: ...] solo en mensajes de Lucía
   let buttons = null;
   if (role === "lucia") {
-    const parsed = appendButtonsIfAny(cleanText);
-    cleanText = parsed.cleanText;
+    const parsed = parseButtonsTag(cleanText);
+    cleanText = parsed.clean;
     buttons = parsed.buttons;
   }
 
@@ -171,7 +333,8 @@ function appendMessageBubble(role, text, shouldSave = true) {
 
   $("chat-box")?.appendChild(div);
 
-  if (buttons && buttons.length) {
+  // Render buttons
+  if (buttons?.length) {
     const container = document.createElement("div");
     container.className = "quick-actions-container";
     buttons.forEach((opt) => {
@@ -189,78 +352,81 @@ function appendMessageBubble(role, text, shouldSave = true) {
 
   div.scrollIntoView({ behavior: "smooth" });
 
-  if (wantsBooking) {
-    awaitingAppointment = true;
-    pendingSuggestions = [];
+  // Render booking button (Apple style existing)
+  if (role === "lucia" && showBookingBtn) {
+    const b = document.createElement("div");
+    b.className = "ws-button";
+    b.innerHTML = "<span>📅 Reservar consulta</span>";
+    b.onclick = () => finalizeAndRedirectToBooking();
+    $("chat-box")?.appendChild(b);
+    b.scrollIntoView({ behavior: "smooth" });
   }
 
-  if (shouldSave) {
-    saveMessage(cleanText, role).catch(() => {});
-  }
+  if (shouldSave) saveMessage(cleanText, role).catch(() => {});
 }
 
 /** =========================
- *  KEY FIX #1:
- *  Detect date/time even if Lucía didn't repeat [AGENDAR_CITA]
+ *  Gemini response
  *  ========================= */
-function looksLikeDateTime(text) {
-  const t = (text || "").toLowerCase();
-  return /(\bhoy\b|\bmañana\b|\bmanana\b|\blunes\b|\bmartes\b|\bmi[eé]rcoles\b|\bjueves\b|\bviernes\b|\bs[áa]bado\b|\bdomingo\b|\b\d{1,2}\s*(am|pm)\b|\b\d{1,2}:\d{2}\b)/i.test(
-    t
-  );
+async function getGeminiReply() {
+  for (const m of MODELS) {
+    try {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: chatHistory,
+            systemInstruction: { parts: [{ text: currentSystemPrompt || DEFAULT_PROMPT }] },
+          }),
+        }
+      );
+
+      if (!r.ok) continue;
+      const d = await r.json();
+      return safeText(d?.candidates?.[0]?.content?.parts?.[0]?.text) || "Disculpe, ¿podría repetirlo?";
+    } catch {}
+  }
+  return "Disculpe, ¿podría repetirlo?";
 }
 
 /** =========================
- *  FIREBASE INIT
+ *  sendMessage
  *  ========================= */
-app = initializeApp(myFirebaseConfig);
-auth = getAuth(app);
-db = getFirestore(app);
+async function sendMessage(manualText = null) {
+  const input = $("user-input");
+  const text = manualText || safeText(input?.value).trim();
+  if (!text) return;
 
-/** =========================
- *  AUTH
- *  ========================= */
-onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    await signInAnonymously(auth);
-    return;
-  }
+  appendMessageBubble("user", text, true);
+  if (input) input.value = "";
 
-  currentUser = user;
+  setLoading(true);
 
-  // Create lead base (includes userId for rules)
+  chatHistory.push({ role: "user", parts: [{ text }] });
+
   try {
-    await setDoc(
-      doc(db, "artifacts", appId, "public", "data", "leads", sessionId),
-      {
-        userId: user.uid,
-        startedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        status: "Navegando",
-        summary: "Pendiente...",
-        lastMessage: "Sesión iniciada",
-      },
-      { merge: true }
-    );
-  } catch (e) {
-    console.warn("No se pudo crear lead base:", e);
-  }
+    const reply = await getGeminiReply();
+    setLoading(false);
 
-  await loadSettings();
-});
+    appendMessageBubble("lucia", reply, true);
+    chatHistory.push({ role: "model", parts: [{ text: reply }] });
+  } catch (e) {
+    console.error(e);
+    setLoading(false);
+    appendMessageBubble("lucia", "Disculpe, tuve un problema técnico. ¿Podría intentar de nuevo?", true);
+  }
+}
+window.sendMessage = sendMessage;
 
 /** =========================
- *  ADMIN LOGIN MODAL
+ *  Admin: Login + Views
  *  ========================= */
 window.openLoginModal = () => {
   const modal = $("login-modal");
   modal?.classList.remove("hidden");
   modal?.classList.add("flex");
-  const err = $("login-error");
-  if (err) {
-    err.classList.add("hidden");
-    err.innerText = "";
-  }
 };
 
 window.closeLoginModal = () => {
@@ -269,23 +435,22 @@ window.closeLoginModal = () => {
   modal?.classList.remove("flex");
 };
 
-$("login-form")?.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const email = ($("admin-email")?.value || "").trim();
-  const pass = $("admin-pass")?.value || "";
-  const err = $("login-error");
+window.performLogin = async () => {
+  const email = safeText($("admin-email")?.value).trim();
+  const pass = safeText($("admin-pass")?.value);
+  const errorMsg = $("login-error");
 
   try {
     await signInWithEmailAndPassword(auth, email, pass);
     window.closeLoginModal();
     switchView("admin");
-  } catch (error) {
-    if (err) {
-      err.innerText = "Credenciales incorrectas";
-      err.classList.remove("hidden");
+  } catch (e) {
+    if (errorMsg) {
+      errorMsg.innerText = "Credenciales incorrectas";
+      errorMsg.classList.remove("hidden");
     }
   }
-});
+};
 
 window.logoutAdmin = async () => {
   await signOut(auth);
@@ -293,20 +458,16 @@ window.logoutAdmin = async () => {
   switchView("client");
 };
 
-/** =========================
- *  VIEWS
- *  ========================= */
-function switchView(v) {
+window.switchView = (v) => {
   $("admin-view")?.classList.toggle("view-hidden", v !== "admin");
   $("client-view")?.classList.toggle("view-hidden", v === "admin");
-
   if (v === "admin") {
     $("admin-view")?.classList.add("flex");
     loadLeads();
-    loadSettings();
+    // Mostrar por defecto leads
+    window.showAdminTab("leads");
   }
-}
-window.switchView = switchView;
+};
 
 window.showAdminTab = (t) => {
   $("section-leads")?.classList.toggle("hidden", t !== "leads");
@@ -325,13 +486,8 @@ window.showAdminTab = (t) => {
         : "text-slate-400 hover:text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors";
 };
 
-window.manualRefresh = () => {
-  loadLeads();
-  showToast("Datos Actualizados");
-};
-
 /** =========================
- *  SETTINGS: prompt
+ *  Settings (Prompt)
  *  ========================= */
 async function loadSettings() {
   const backupPrompt = localStorage.getItem("lucia_brain_backup_v2");
@@ -340,6 +496,7 @@ async function loadSettings() {
     const snap = await getDoc(
       doc(db, "artifacts", appId, "public", "data", "settings", "config")
     );
+
     if (snap.exists()) currentSystemPrompt = snap.data().prompt || DEFAULT_PROMPT;
     else currentSystemPrompt = backupPrompt || DEFAULT_PROMPT;
   } catch (e) {
@@ -350,7 +507,11 @@ async function loadSettings() {
 }
 
 window.savePrompt = async () => {
-  const val = $("prompt-editor")?.value || "";
+  if (!isAdmin) {
+    showToast("No autorizado");
+    return;
+  }
+  const val = safeText($("prompt-editor")?.value);
   currentSystemPrompt = val;
   localStorage.setItem("lucia_brain_backup_v2", val);
 
@@ -360,17 +521,85 @@ window.savePrompt = async () => {
       { prompt: val },
       { merge: true }
     );
-    showToast("Prompt guardado correctamente");
+    showToast("Configuración guardada");
   } catch (e) {
-    console.error("Error guardando prompt:", e);
+    console.error("Save error:", e);
     showToast("Guardado local (falló nube)");
   }
 };
 
 /** =========================
- *  LEADS: Dashboard
+ *  Leads table (Admin)
+ *  - muestra SOLO los que hicieron click en Reservar (status 📅 RESERVA)
  *  ========================= */
+function renderLeadsTable() {
+  const tbody = $("leads-table-body");
+  const emptyState = $("empty-state");
+  const badge = $("badge-hot");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+
+  const filtered = allLeadsCache.filter((l) => l.status === "📅 RESERVA");
+
+  if (emptyState) {
+    if (filtered.length === 0) emptyState.classList.remove("hidden");
+    else emptyState.classList.add("hidden");
+  }
+
+  if (badge) {
+    if (filtered.length > 0) {
+      badge.innerText = String(filtered.length);
+      badge.classList.remove("hidden");
+    } else badge.classList.add("hidden");
+  }
+
+  filtered.forEach((l) => {
+    const ts =
+      l.bookingClickedAt?.seconds ? l.bookingClickedAt.seconds * 1000 :
+      l.updatedAt?.seconds ? l.updatedAt.seconds * 1000 :
+      Date.now();
+
+    const d = new Date(ts).toLocaleString([], {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    let name = l.extractedName || "Prospecto";
+    if (name.length > 28) name = "Prospecto";
+
+    let interes = "Reserva";
+    if (safeText(l.summary).toLowerCase().includes("funeral")) interes = "Funeral";
+    else if (safeText(l.summary).toLowerCase().includes("deuda")) interes = "Deudas";
+
+    tbody.innerHTML += `
+      <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+        <td class="p-4 text-[11px] text-gray-400 font-mono">${d}</td>
+        <td class="p-4 font-bold text-sm text-slate-700">${escapeHtml(name)}</td>
+        <td class="p-4 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg w-fit px-2 py-1 inline-block">${escapeHtml(interes)}</td>
+        <td class="p-4 text-right">
+          <button onclick="openDetailModal('${l.id}')" class="text-white bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm">
+            Ver Ficha
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+function escapeHtml(str) {
+  return safeText(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function loadLeads() {
+  if (!isAdmin) return;
   try {
     onSnapshot(
       collection(db, "artifacts", appId, "public", "data", "leads"),
@@ -389,68 +618,11 @@ function loadLeads() {
   }
 }
 
-function renderLeadsTable() {
-  const tbody = $("leads-table-body");
-  const emptyState = $("empty-state");
-  const badge = $("badge-hot");
-  if (!tbody) return;
-
-  tbody.innerHTML = "";
-
-  // Mostrar solo quienes solicitaron/confirmaron cita
-  const filtered = allLeadsCache.filter(
-    (l) => l.status === "CITA_SOLICITADA" || l.status === "CITA_CONFIRMADA"
-  );
-
-  if (emptyState) {
-    if (filtered.length === 0) emptyState.classList.remove("hidden");
-    else emptyState.classList.add("hidden");
-  }
-
-  if (badge) {
-    if (filtered.length > 0) {
-      badge.innerText = String(filtered.length);
-      badge.classList.remove("hidden");
-    } else {
-      badge.classList.add("hidden");
-    }
-  }
-
-  filtered.forEach((l) => {
-    const updatedMs = l.updatedAt?.seconds ? l.updatedAt.seconds * 1000 : Date.now();
-    const d = new Date(updatedMs).toLocaleString([], {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    const name = l.extractedName || "Prospecto";
-    const appt = l.appointmentStart ? formatIsoForUser(l.appointmentStart) : "Pendiente";
-
-    tbody.innerHTML += `
-      <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-        <td class="p-4 text-[11px] text-gray-400 font-mono">${d}</td>
-        <td class="p-4 font-bold text-sm text-slate-700">${escapeHtml(name)}</td>
-        <td class="p-4 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg w-fit px-2 py-1 inline-block">${escapeHtml(appt)}</td>
-        <td class="p-4 text-right">
-          <button onclick="openDetailModal('${l.id}')" class="text-white bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm">
-            Ver Ficha
-          </button>
-        </td>
-      </tr>
-    `;
-  });
-}
-
-function escapeHtml(str) {
-  return String(str || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
+window.manualRefresh = () => {
+  if (!isAdmin) return;
+  loadLeads();
+  showToast("Datos actualizados");
+};
 
 /** =========================
  *  Lead detail modal
@@ -462,12 +634,9 @@ window.openDetailModal = async (id) => {
 
   let data = allLeadsCache.find((l) => l.id === id);
   if (!data) {
-    const s = await getDoc(
-      doc(db, "artifacts", appId, "public", "data", "leads", id)
-    );
+    const s = await getDoc(doc(db, "artifacts", appId, "public", "data", "leads", id));
     if (s.exists()) data = { id: s.id, ...s.data() };
   }
-
   if (!data) return;
 
   if ($("detail-summary")) $("detail-summary").innerText = data.summary || "Sin resumen";
@@ -477,11 +646,9 @@ window.openDetailModal = async (id) => {
       .sort((a, b) => (a.ts || 0) - (b.ts || 0))
       .map(
         (m) =>
-          `<div class="mb-2">
-             <span class="font-bold ${
-               m.role === "lucia" ? "text-blue-600" : "text-gray-800"
-             }">${m.role === "lucia" ? "Lucía" : "Cliente"}:</span> ${escapeHtml(m.text)}
-           </div>`
+          `<div class="mb-2"><span class="font-bold ${
+            m.role === "lucia" ? "text-blue-600" : "text-gray-800"
+          }">${m.role === "lucia" ? "Lucía" : "Cliente"}:</span> ${escapeHtml(m.text)}</div>`
       )
       .join("");
   }
@@ -500,7 +667,7 @@ window.openDetailModal = async (id) => {
     contactInfo?.classList.remove("hidden");
   } else {
     if (callBtn) {
-      callBtn.innerHTML = `📞 Número No Disponible`;
+      callBtn.innerHTML = "📞 Número No Disponible";
       callBtn.classList.add("opacity-50", "cursor-not-allowed");
     }
     contactInfo?.classList.add("hidden");
@@ -508,383 +675,62 @@ window.openDetailModal = async (id) => {
 };
 
 window.closeDetailModal = () => {
-  const modal = $("lead-detail-modal");
-  modal?.classList.add("hidden");
-  modal?.classList.remove("flex");
+  $("lead-detail-modal")?.classList.add("hidden");
+  $("lead-detail-modal")?.classList.remove("flex");
 };
-
 window.toggleHistory = () => $("detail-history")?.classList.toggle("hidden");
-window.callProspect = () => {
-  const phone = $("detail-phone")?.innerText;
-  if (phone && phone !== "--") window.open(`tel:${phone}`);
-};
 
 /** =========================
- *  Save message to Firestore
+ *  Init Firebase + Auth
  *  ========================= */
-async function saveMessage(txt, role, extra = {}) {
-  if (!currentUser) return;
+function init() {
+  app = initializeApp(myFirebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
 
-  const payload = {
-    userId: currentUser.uid,
-    lastMessage: txt,
-    [`history.${Date.now()}`]: { role, text: txt, ts: Date.now() },
-    updatedAt: serverTimestamp(),
-    ...extra,
-  };
-
-  try {
-    await updateDoc(
-      doc(db, "artifacts", appId, "public", "data", "leads", sessionId),
-      payload
-    );
-  } catch (e) {
-    console.warn("Error guardando mensaje:", e);
-  }
-}
-
-/** =========================
- *  Gemini call
- *  ========================= */
-async function callGemini() {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-    GEMINI_MODEL
-  )}:generateContent?key=${API_KEY}`;
-
-  const r = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: chatHistory,
-      systemInstruction: {
-        parts: [{ text: currentSystemPrompt || DEFAULT_PROMPT }],
-      },
-    }),
+  // Form submit
+  $("chat-form")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    sendMessage();
   });
 
-  if (!r.ok) {
-    const err = await r.text().catch(() => "");
-    console.error("Gemini error:", r.status, err);
-    throw new Error("gemini_error");
-  }
-
-  const d = await r.json();
-  return d.candidates?.[0]?.content?.parts?.[0]?.text || "Disculpe, ¿podría repetirlo?";
-}
-
-/** =========================
- *  Lead summary extractor (for dashboard + calendar description)
- *  ========================= */
-async function analyzeLead() {
-  const prompt = `
-ANALIZA el chat y devuelve JSON estricto:
-{
- "name":"Nombre o null",
- "age":"Edad (solo número) o null",
- "state":"Estado o null",
- "phone":"Numero o null",
- "why":"Motivo principal (breve) o null",
- "health":"Salud/preexistencias (breve) o null",
- "budget":"Presupuesto mensual (ej 40) o null",
- "summary":"Resumen final para el licenciado (1 párrafo)."
-}
-`;
-
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-      GEMINI_MODEL
-    )}:generateContent?key=${API_KEY}`;
-
-    const r = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [...chatHistory, { role: "user", parts: [{ text: prompt }] }],
-      }),
-    });
-
-    if (!r.ok) return { summary: "Cita solicitada. Revisar conversación." };
-
-    const d = await r.json();
-    const raw =
-      d.candidates?.[0]?.content?.parts?.[0]?.text
-        ?.replace(/```json|```/g, "")
-        .trim() || "{}";
-
-    const json = JSON.parse(raw);
-
-    const update = {
-      extractedName: json.name || null,
-      extractedAge: json.age || null,
-      extractedState: json.state || null,
-      phone: json.phone && json.phone !== "null" ? json.phone : null,
-      extractedWhy: json.why || null,
-      extractedHealth: json.health || null,
-      extractedBudget: json.budget || null,
-      summary: json.summary || "Cita solicitada. Revisar conversación.",
-    };
-
-    await updateDoc(
-      doc(db, "artifacts", appId, "public", "data", "leads", sessionId),
-      { ...update, updatedAt: serverTimestamp() }
-    );
-
-    return update;
-  } catch (e) {
-    console.error("analyzeLead error:", e);
-    return { summary: "Cita solicitada. Revisar conversación." };
-  }
-}
-
-/** =========================
- *  Booking: call Apps Script
- *  KEY FIX #2: avoid CORS preflight using text/plain
- *  ========================= */
-async function bookWithAppsScript({
-  name,
-  phone,
-  requestedText,
-  summary,
-  startIso = null,
-}) {
-  const payload = {
-    token: BOOKING_TOKEN,
-    timezone: PROSPECT_TZ,
-    meetingMinutes: MEETING_MINUTES,
-    calendarId: "primary",
-    name,
-    phone,
-    requestedText,
-    summary,
-    startIso,
-  };
-
-  const r = await fetch(BOOKING_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "text/plain;charset=utf-8", // ✅ avoids OPTIONS preflight in most browsers
-    },
-    body: JSON.stringify(payload),
+  // Login submit (si tu HTML usa performLogin en onsubmit, esto es extra-seguro)
+  $("login-form")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    window.performLogin();
   });
 
-  const text = await r.text();
-  try {
-    return JSON.parse(text);
-  } catch {
-    console.error("Respuesta no-JSON del script:", text);
-    return {
-      ok: false,
-      status: "BAD_RESPONSE",
-      message: "Respuesta inválida del servidor",
-    };
-  }
-}
-
-/** =========================
- *  Main sendMessage
- *  ========================= */
-async function sendMessage(manualText = null) {
-  const input = $("user-input");
-  const text = manualText || (input?.value || "").trim();
-  if (!text) return;
-
-  // user bubble
-  appendMessageBubble("user", text, true);
-  if (input) input.value = "";
-
-  // push into history
-  chatHistory.push({ role: "user", parts: [{ text }] });
-
-  // Booking if: awaitingAppointment OR user text looks like datetime
-  const shouldTryBooking = awaitingAppointment || looksLikeDateTime(text);
-
-  if (shouldTryBooking) {
-    awaitingAppointment = true;
-    setLoading(true);
-
-    try {
-      // If user chooses suggestion 1/2
-      const trimmed = text.trim();
-      if (pendingSuggestions.length > 0 && (trimmed === "1" || trimmed === "2")) {
-        const chosenIso = pendingSuggestions[Number(trimmed) - 1];
-        pendingSuggestions = [];
-
-        await updateDoc(
-          doc(db, "artifacts", appId, "public", "data", "leads", sessionId),
-          { status: "CITA_SOLICITADA", updatedAt: serverTimestamp() }
-        );
-
-        const lead = await analyzeLead();
-        const name = lead.extractedName || "Prospecto";
-        const phone = lead.phone || null;
-        const summary = lead.summary || "Cita solicitada. Revisar conversación.";
-
-        const result = await bookWithAppsScript({
-          name,
-          phone,
-          requestedText: `Elección sugerida: ${formatIsoForUser(chosenIso)}`,
-          summary,
-          startIso: chosenIso,
-        });
-
-        setLoading(false);
-
-        if (result.ok && result.status === "CONFIRMED") {
-          awaitingAppointment = false;
-
-          await updateDoc(
-            doc(db, "artifacts", appId, "public", "data", "leads", sessionId),
-            {
-              status: "CITA_CONFIRMADA",
-              appointmentStart: result.start,
-              appointmentEnd: result.end,
-              appointmentEventUrl: result.eventUrl || null,
-              updatedAt: serverTimestamp(),
-            }
-          );
-
-          appendMessageBubble(
-            "lucia",
-            `Perfecto ✅ Su cita quedó programada para **${formatIsoForUser(
-              result.start
-            )}**.\nEse día el Licenciado se comunicará con usted por WhatsApp.`,
-            true
-          );
-          return;
-        }
-
-        appendMessageBubble(
-          "lucia",
-          `Ese horario se ocupó. Por favor dígame otro día y hora (Ej: martes 3pm). [AGENDAR_CITA]`,
-          true
-        );
-        return;
-      }
-
-      // Normal booking attempt
-      await updateDoc(
-        doc(db, "artifacts", appId, "public", "data", "leads", sessionId),
-        { status: "CITA_SOLICITADA", updatedAt: serverTimestamp() }
-      );
-
-      const lead = await analyzeLead();
-      const name = lead.extractedName || "Prospecto";
-      const phone = lead.phone || null;
-      const summary = lead.summary || "Cita solicitada. Revisar conversación.";
-
-      const result = await bookWithAppsScript({
-        name,
-        phone,
-        requestedText: text,
-        summary,
-      });
-
-      setLoading(false);
-
-      if (result.ok && result.status === "CONFIRMED") {
-        awaitingAppointment = false;
-        pendingSuggestions = [];
-
-        await updateDoc(
-          doc(db, "artifacts", appId, "public", "data", "leads", sessionId),
-          {
-            status: "CITA_CONFIRMADA",
-            appointmentStart: result.start,
-            appointmentEnd: result.end,
-            appointmentEventUrl: result.eventUrl || null,
-            updatedAt: serverTimestamp(),
-          }
-        );
-
-        appendMessageBubble(
-          "lucia",
-          `Perfecto ✅ Su cita quedó programada para **${formatIsoForUser(
-            result.start
-          )}**.\nEse día el Licenciado se comunicará con usted por WhatsApp.`,
-          true
-        );
-        return;
-      }
-
-      if (result.status === "NEED_CLARIFY") {
-        appendMessageBubble("lucia", `${result.message} [AGENDAR_CITA]`, true);
-        return;
-      }
-
-      if (
-        result.status === "CONFLICT" &&
-        Array.isArray(result.suggestions) &&
-        result.suggestions.length > 0
-      ) {
-        pendingSuggestions = result.suggestions.slice(0, 2);
-
-        const opt1 = pendingSuggestions[0] ? formatIsoForUser(pendingSuggestions[0]) : null;
-        const opt2 = pendingSuggestions[1] ? formatIsoForUser(pendingSuggestions[1]) : null;
-
-        let msg = `En ese horario ya hay una cita.\n¿Le sirve alguna de estas opciones?\n\n`;
-        if (opt1) msg += `**1)** ${opt1}\n`;
-        if (opt2) msg += `**2)** ${opt2}\n`;
-        msg += `\nResponda con **1** o **2** (o dígame otro horario). [AGENDAR_CITA]`;
-
-        appendMessageBubble("lucia", msg, true);
-        return;
-      }
-
-      appendMessageBubble(
-        "lucia",
-        `Disculpe, no pude agendar ese horario. Dígame otro día y hora (Ej: miércoles 11am). [AGENDAR_CITA]`,
-        true
-      );
-      return;
-    } catch (e) {
-      console.error("booking flow error:", e);
-      setLoading(false);
-      showToast("Error agendando (ver consola)");
-      appendMessageBubble(
-        "lucia",
-        "Disculpe, tuve una dificultad técnica al verificar la agenda. ¿Podría intentar nuevamente con el día y la hora?",
-        true
-      );
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      await signInAnonymously(auth);
       return;
     }
-  }
 
-  // Normal mode: Gemini
-  setLoading(true);
-  try {
-    const reply = await callGemini();
-    setLoading(false);
+    currentUser = user;
+    isAdmin = !!user.email && user.email.toLowerCase() === ADMIN_EMAIL;
 
-    appendMessageBubble("lucia", reply, true);
-    chatHistory.push({ role: "model", parts: [{ text: reply }] });
-  } catch (e) {
-    console.error(e);
-    setLoading(false);
-    showToast("Error IA (ver consola)");
-    appendMessageBubble(
-      "lucia",
-      "Disculpe, tuve un problema técnico. ¿Podría intentar de nuevo?",
-      true
-    );
-  }
+    // Crear lead base para anónimos
+    if (user.isAnonymous) {
+      try {
+        await setDoc(
+          doc(db, "artifacts", appId, "public", "data", "leads", sessionId),
+          {
+            userId: user.uid,
+            startedAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            lastMessage: "Sesión iniciada",
+            status: "Navegando",
+            summary: "Pendiente...",
+          },
+          { merge: true }
+        );
+      } catch (e) {
+        console.warn("No se pudo crear lead base:", e);
+      }
+    }
+
+    await loadSettings();
+  });
 }
-window.sendMessage = sendMessage;
 
-/** =========================
- *  Chat form submit
- *  ========================= */
-$("chat-form")?.addEventListener("submit", (e) => {
-  e.preventDefault();
-  sendMessage();
-});
-
-/** =========================
- *  Optional: close modal click
- *  ========================= */
-document.addEventListener("click", (e) => {
-  const modal = $("login-modal");
-  if (!modal) return;
-  if (!modal.classList.contains("hidden") && e.target === modal) {
-    window.closeLoginModal();
-  }
-});
+init();
