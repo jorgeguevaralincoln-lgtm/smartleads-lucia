@@ -99,12 +99,11 @@
         .badge-fl { background-color: #FEF3C7; color: #D97706; border: 1px solid #FCD34D; }
         .badge-tx { background-color: #DBEAFE; color: #1D4ED8; border: 1px solid #93C5FD; }
 
-        /* Notificación Toast Centrada */
         .toast-notification {
             position: fixed; 
             top: 20px; 
-            left: 50%; /* Centrado horizontal */
-            transform: translateX(-50%) translateY(-100px); /* Oculto arriba */
+            left: 50%; 
+            transform: translateX(-50%) translateY(-100px); 
             background: #34C759; color: white;
             padding: 12px 24px; border-radius: 16px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.15);
@@ -122,7 +121,6 @@
 </head>
 <body class="flex items-center justify-center min-h-screen bg-gray-100">
 
-    <!-- Notificación Toast -->
     <div id="toast" class="toast-notification">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
@@ -297,7 +295,7 @@
         const isInCanvas = typeof __firebase_config !== 'undefined';
         const MODEL_NAME = isInCanvas ? "gemini-2.5-flash-preview-09-2025" : "gemini-1.5-flash";
         
-        // SIN MEMORIA: Siempre nueva sesión
+        // SIN MEMORIA DE SESIÓN (Siempre nueva al recargar)
         const sessionId = crypto.randomUUID(); 
         localStorage.removeItem('sl_session_id');
 
@@ -315,7 +313,7 @@
         let db, app, auth, appId; let useLocalStorage = false;
         let allLeadsCache = [];
 
-        // --- CEREBRO DURO ESTABILIZADO (TU GUION HÍBRIDO + REGLAS DE SEGURIDAD) ---
+        // --- CEREBRO DURO ESTABILIZADO (Híbrido v5) ---
         const DEFAULT_PROMPT = `
 1. IDENTIDAD Y FILTRO DE INICIO
 Nombre: Lucía.
@@ -412,36 +410,38 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
         window.logoutAdmin = async () => { await signOut(auth); await signInAnonymously(auth); switchView('client'); };
 
         async function loadSettings() {
-            // RUTA ESTÁTICA Y SEGURA: Siempre lee de 'settings/config'
-            const STORAGE_PATH = 'settings/config'; 
+            // BACKUP DE SEGURIDAD: Intentar leer del LocalStorage primero si existe
+            const backupPrompt = localStorage.getItem('lucia_brain_backup_v2');
             
             if (useLocalStorage) { 
-                currentSystemPrompt = localStorage.getItem('lucia_config_prod') || DEFAULT_PROMPT; 
+                currentSystemPrompt = backupPrompt || DEFAULT_PROMPT; 
             } else { 
                 try { 
                     const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config')); 
                     if (snap.exists()) {
-                        // SIEMPRE prioriza lo que guardaste en la DB. Si está vacío, usa el DEFAULT.
                         currentSystemPrompt = snap.data().prompt || DEFAULT_PROMPT;
+                    } else if (backupPrompt) {
+                        currentSystemPrompt = backupPrompt; // Usar backup local si BD falla
                     } else {
                         currentSystemPrompt = DEFAULT_PROMPT;
                     }
                 } catch (e) { 
-                    currentSystemPrompt = DEFAULT_PROMPT; 
+                    currentSystemPrompt = backupPrompt || DEFAULT_PROMPT; 
                 } 
             }
             document.getElementById('prompt-editor').value = currentSystemPrompt;
         }
 
         window.savePrompt = async () => {
-            if (!currentUser) return; // Validación de seguridad
-            
             const val = document.getElementById('prompt-editor').value; 
             currentSystemPrompt = val;
             
+            // 1. GUARDADO LOCAL SIEMPRE (COMO RESPALDO)
+            localStorage.setItem('lucia_brain_backup_v2', val);
+
+            // 2. GUARDADO EN NUBE
             if (useLocalStorage) {
-                localStorage.setItem('lucia_config_prod', val);
-                window.showToast("Prompt guardado correctamente");
+                window.showToast("Guardado (Localmente)");
             }
             else { 
                 try { 
@@ -449,7 +449,8 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
                     window.showToast("Prompt guardado correctamente"); 
                 } catch (e) { 
                     console.error("Save error:", e);
-                    window.showToast("Error al guardar (Permisos)");
+                    // Si falla la nube, avisamos que al menos se guardó local
+                    window.showToast("Guardado en Navegador (Error Conexión)");
                 } 
             }
         };
