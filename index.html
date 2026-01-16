@@ -1,180 +1,210 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SmartLeads | Asistente Inteligente</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SmartLeads | Asistente Inteligente</title>
 
-    <!-- ✅ CSS separado (mismo nivel) -->
-    <link rel="stylesheet" href="./styles.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./styles.css">
 </head>
 
 <body class="flex items-center justify-center min-h-screen bg-gray-100">
 
-    <div id="toast" class="toast-notification">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-        </svg>
-        <span id="toast-message">Datos Actualizados</span>
+  <div id="toast" class="toast-notification">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+    </svg>
+    <span id="toast-message">Datos Actualizados</span>
+  </div>
+
+  <!-- VISTA CLIENTE -->
+  <div id="client-view" class="app-card">
+    <div class="bg-white/80 backdrop-blur-md p-4 flex items-center gap-4 z-20 border-b border-gray-200 sticky top-0">
+      <div class="relative">
+        <img src="https://img.freepik.com/free-photo/portrait-young-businesswoman-holding-eyeglasses-hand-against-gray-background_23-2148029483.jpg?w=200"
+             class="w-12 h-12 rounded-full object-cover border border-gray-100 shadow-sm" alt="Lucía">
+        <span id="db-status-dot" class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></span>
+      </div>
+      <div class="flex-grow">
+        <h1 class="text-[17px] font-bold text-gray-900 leading-tight">Lucía</h1>
+        <p class="text-[12px] text-green-600 font-semibold">Asistente en línea</p>
+      </div>
     </div>
 
-    <!-- VISTA 1: CHAT CLIENTE -->
-    <div id="client-view" class="app-card">
-        <div class="bg-white/80 backdrop-blur-md p-4 flex items-center gap-4 z-20 border-b border-gray-200 sticky top-0">
-            <div class="relative">
-                <img src="https://img.freepik.com/free-photo/portrait-young-businesswoman-holding-eyeglasses-hand-against-gray-background_23-2148029483.jpg?w=200"
-                     class="w-12 h-12 rounded-full object-cover border border-gray-100 shadow-sm" alt="Lucía">
-                <span id="db-status-dot" class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></span>
-            </div>
-            <div class="flex-grow">
-                <h1 class="text-[17px] font-bold text-gray-900 leading-tight">Lucía</h1>
-                <p class="text-[12px] text-green-600 font-semibold">Asistente en línea</p>
-            </div>
-        </div>
+    <div id="chat-box" class="chat-container p-5 flex-grow no-scrollbar bg-[#f5f5f7]">
+      <div class="bubble lucia shadow-sm">
+        Hola, soy <b>Lucía</b>, su Asistente de beneficios. Mi labor es ayudarle a tomar decisiones acertadas para su familia. Toda su información es privada y nada se compartirá sin su permiso.<br><br>
+        <b>¿Desea continuar para conocer sus beneficios?</b>
+      </div>
 
-        <div id="chat-box" class="chat-container p-5 flex-grow no-scrollbar bg-[#f5f5f7]">
-            <!-- MENSAJE DE BIENVENIDA ESTÁTICO -->
-            <div class="bubble lucia shadow-sm">
-                Hola, soy <b>Lucía</b>, su Asistente de beneficios. Mi labor es ayudarle a tomar decisiones acertadas para su familia. Toda su información es privada y nada se compartirá sin su permiso.<br><br>
-                <b>¿Desea continuar para conocer sus beneficios?</b>
-            </div>
-            <!-- BOTONES INICIALES ESTÁTICOS -->
-            <div class="quick-actions-container">
-                <button class="quick-btn" onclick="sendMessage('Sí, continuar')">Sí, continuar</button>
-                <button class="quick-btn" onclick="sendMessage('No me interesa')">No me interesa</button>
-            </div>
-        </div>
-
-        <div id="loading" class="px-6 py-2 hidden bg-[#f5f5f7]">
-            <div class="bg-gray-200 inline-flex items-center gap-1.5 px-4 py-2 rounded-full">
-                <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
-            </div>
-        </div>
-
-        <div class="p-4 bg-white border-t border-gray-200">
-            <form id="chat-form" class="flex items-center gap-2 mb-2" autocomplete="off">
-                <div class="flex-grow bg-gray-100 rounded-full border border-transparent focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                    <input id="user-input" type="text" name="message" autocomplete="off" placeholder="Escribe aquí..." class="w-full bg-transparent px-5 py-3 outline-none text-[16px] text-gray-800 placeholder-gray-400 rounded-full">
-                </div>
-                <button type="submit" id="send-btn" class="bg-[#007AFF] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 pl-0.5"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>
-                </button>
-            </form>
-            <p class="text-center text-[10px] text-gray-400 select-none">
-                <span class="admin-trigger" onclick="openLoginModal()">SmartLeads</span> • Conexión Segura
-            </p>
-        </div>
+      <div class="quick-actions-container">
+        <button class="quick-btn" onclick="sendMessage('Sí, continuar')">Sí, continuar</button>
+        <button class="quick-btn" onclick="sendMessage('No me interesa')">No me interesa</button>
+      </div>
     </div>
 
-    <!-- MODAL LOGIN -->
-    <div id="login-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-xs transform transition-all">
-            <div class="text-center mb-6">
-                <h3 class="text-xl font-bold text-gray-900">Acceso Admin</h3>
-                <p class="text-sm text-gray-500">Solo personal autorizado</p>
-            </div>
-
-            <form id="login-form">
-                <input type="email" id="admin-email" name="email" autocomplete="username" class="w-full border-b border-gray-200 py-3 px-2 mb-3 focus:border-blue-500 outline-none text-gray-800" placeholder="Correo electrónico">
-                <input type="password" id="admin-pass" name="password" autocomplete="current-password" class="w-full border-b border-gray-200 py-3 px-2 mb-6 focus:border-blue-500 outline-none text-gray-800" placeholder="Contraseña">
-
-                <div class="flex gap-3">
-                    <button type="button" onclick="closeLoginModal()" class="flex-1 py-3 rounded-xl bg-gray-100 text-gray-600 font-bold active:scale-95 transition-transform">Cancelar</button>
-                    <button type="submit" class="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold shadow-lg active:scale-95 transition-transform">Entrar</button>
-                </div>
-            </form>
-            <p id="login-error" class="text-center text-xs text-red-500 mt-4 hidden font-bold"></p>
-        </div>
+    <div id="loading" class="px-6 py-2 hidden bg-[#f5f5f7]">
+      <div class="bg-gray-200 inline-flex items-center gap-1.5 px-4 py-2 rounded-full">
+        <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+      </div>
     </div>
 
-    <!-- PANEL ADMIN -->
-    <div id="admin-view" class="w-full max-w-6xl bg-white md:rounded-[30px] shadow-2xl h-screen md:h-[90vh] flex flex-col overflow-hidden border border-gray-200 view-hidden relative">
-        <div class="bg-slate-900 p-5 text-white flex flex-wrap justify-between items-center gap-4">
-            <div>
-                <h1 class="text-xl font-bold tracking-tight">SmartLeads CRM</h1>
-                <p class="text-[10px] text-slate-400 font-medium">Panel de Control</p>
-            </div>
-
-            <div class="flex items-center gap-2">
-                <button onclick="manualRefresh()" class="bg-blue-800 hover:bg-blue-700 text-white p-2 rounded-full shadow-md transition-all active:scale-90" title="Refrescar Datos">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                </button>
-                <button onclick="showAdminTab('leads')" id="nav-leads" class="text-white bg-white/10 px-4 py-2 rounded-lg text-sm font-bold">Leads</button>
-                <button onclick="showAdminTab('training')" id="nav-training" class="text-slate-400 hover:text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">IA</button>
-                <button onclick="logoutAdmin()" class="bg-red-500/20 text-red-300 hover:bg-red-500/30 px-4 py-2 rounded-lg text-xs font-bold ml-2">Salir</button>
-            </div>
+    <div class="p-4 bg-white border-t border-gray-200">
+      <form id="chat-form" class="flex items-center gap-2 mb-2" autocomplete="off">
+        <div class="flex-grow bg-gray-100 rounded-full border border-transparent focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+          <input id="user-input" type="text" name="message" autocomplete="off" placeholder="Escribe aquí..."
+                 class="w-full bg-transparent px-5 py-3 outline-none text-[16px] text-gray-800 placeholder-gray-400 rounded-full">
         </div>
+        <button type="submit" id="send-btn" class="bg-[#007AFF] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 pl-0.5">
+            <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+          </svg>
+        </button>
+      </form>
 
-        <div id="section-leads" class="flex-grow flex flex-col overflow-hidden bg-gray-50">
-            <div class="px-6 py-4 border-b border-gray-200 bg-white sticky top-0 z-20 flex justify-between items-center">
-                <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
-                    🎯 Prospectos Calificados
-                </h2>
-                <span id="badge-hot" class="bg-blue-100 text-blue-600 text-xs px-3 py-1 rounded-full font-bold hidden">0</span>
-            </div>
+      <p class="text-center text-[10px] text-gray-400 select-none">
+        <span class="admin-trigger" onclick="openLoginModal()">SmartLeads</span> • Conexión Segura
+      </p>
+    </div>
+  </div>
 
-            <div class="flex-grow overflow-y-auto p-4">
-                <table class="w-full text-left border-collapse bg-white rounded-2xl shadow-sm overflow-hidden">
-                    <thead class="bg-gray-50 border-b border-gray-100">
-                        <tr class="text-gray-400 text-[10px] uppercase font-bold tracking-wider">
-                            <th class="p-4 w-32">Fecha</th>
-                            <th class="p-4">Prospecto</th>
-                            <th class="p-4">Interés Principal</th>
-                            <th class="p-4 text-right">Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leads-table-body" class="divide-y divide-gray-50"></tbody>
-                </table>
-                <div id="empty-state" class="hidden text-center py-20">
-                    <p class="text-gray-400 text-sm">No hay leads pendientes por contactar.</p>
-                </div>
-            </div>
+  <!-- MODAL LOGIN -->
+  <div id="login-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-xs transform transition-all">
+      <div class="text-center mb-6">
+        <h3 class="text-xl font-bold text-gray-900">Acceso Admin</h3>
+        <p class="text-sm text-gray-500">Solo personal autorizado</p>
+      </div>
+
+      <form id="login-form">
+        <input type="email" id="admin-email" name="email" autocomplete="username"
+               class="w-full border-b border-gray-200 py-3 px-2 mb-3 focus:border-blue-500 outline-none text-gray-800"
+               placeholder="Correo electrónico">
+        <input type="password" id="admin-pass" name="password" autocomplete="current-password"
+               class="w-full border-b border-gray-200 py-3 px-2 mb-6 focus:border-blue-500 outline-none text-gray-800"
+               placeholder="Contraseña">
+
+        <div class="flex gap-3">
+          <button type="button" onclick="closeLoginModal()"
+                  class="flex-1 py-3 rounded-xl bg-gray-100 text-gray-600 font-bold active:scale-95 transition-transform">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold shadow-lg active:scale-95 transition-transform">
+            Entrar
+          </button>
         </div>
+      </form>
 
-        <div id="section-training" class="flex-grow p-6 bg-gray-50 overflow-y-auto hidden">
-            <div class="max-w-3xl mx-auto bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                <h2 class="text-lg font-bold text-gray-900 mb-4">Cerebro de Lucía</h2>
-                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-                    <p class="text-sm text-yellow-700">
-                        ⚠️ <b>Sistema Manual:</b><br>
-                        Usa: <code>[BOTONES: Opción 1, Opción 2]</code> al final de tus preguntas.
-                    </p>
-                </div>
-                <textarea id="prompt-editor" class="w-full h-80 p-4 border border-gray-200 rounded-xl font-sans text-sm leading-relaxed focus:border-blue-500 outline-none resize-none"></textarea>
-                <div class="mt-4 flex justify-end">
-                    <button onclick="savePrompt()" class="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">Guardar Configuración</button>
-                </div>
-            </div>
-        </div>
+      <p id="login-error" class="text-center text-xs text-red-500 mt-4 hidden font-bold"></p>
+    </div>
+  </div>
+
+  <!-- PANEL ADMIN -->
+  <div id="admin-view" class="w-full max-w-6xl bg-white md:rounded-[30px] shadow-2xl h-screen md:h-[90vh] flex flex-col overflow-hidden border border-gray-200 view-hidden relative">
+
+    <div class="bg-slate-900 p-5 text-white flex flex-wrap justify-between items-center gap-4">
+      <div>
+        <h1 class="text-xl font-bold tracking-tight">SmartLeads CRM</h1>
+        <p class="text-[10px] text-slate-400 font-medium">Panel de Control</p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="manualRefresh()" class="bg-blue-800 hover:bg-blue-700 text-white p-2 rounded-full shadow-md transition-all active:scale-90" title="Refrescar Datos">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+        </button>
+        <button onclick="showAdminTab('leads')" id="nav-leads" class="text-white bg-white/10 px-4 py-2 rounded-lg text-sm font-bold">Leads</button>
+        <button onclick="showAdminTab('training')" id="nav-training" class="text-slate-400 hover:text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">IA</button>
+        <button onclick="logoutAdmin()" class="bg-red-500/20 text-red-300 hover:bg-red-500/30 px-4 py-2 rounded-lg text-xs font-bold ml-2">Salir</button>
+      </div>
     </div>
 
-    <!-- MODAL DETALLE LEAD -->
-    <div id="lead-detail-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden">
-            <div class="bg-slate-50 p-5 border-b border-gray-100 flex justify-between items-center">
-                <h3 class="text-lg font-bold text-gray-900">Ficha del Prospecto</h3>
-                <button onclick="closeDetailModal()" class="bg-white p-2 rounded-full shadow-sm text-gray-400 hover:text-gray-600">✕</button>
-            </div>
-            <div class="p-6 overflow-y-auto bg-white flex-grow">
-                <div id="detail-summary" class="text-sm text-slate-700 bg-blue-50 p-5 rounded-2xl border border-blue-100 leading-relaxed font-medium whitespace-pre-line">Esperando análisis...</div>
+    <!-- TAB: LEADS -->
+    <div id="section-leads" class="flex-grow flex flex-col overflow-hidden bg-gray-50">
+      <div class="px-6 py-4 border-b border-gray-200 bg-white sticky top-0 z-20 flex justify-between items-center">
+        <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">📅 Citas</h2>
+        <span id="badge-hot" class="bg-blue-100 text-blue-600 text-xs px-3 py-1 rounded-full font-bold hidden">0</span>
+      </div>
 
-                <div id="contact-info" class="mt-4 hidden">
-                    <p class="text-xs font-bold text-gray-400 uppercase">Teléfono Detectado</p>
-                    <p class="text-lg font-bold text-gray-800" id="detail-phone">--</p>
-                </div>
-
-                <button onclick="toggleHistory()" class="mt-6 text-xs font-bold text-gray-400 uppercase tracking-wider w-full text-left hover:text-blue-500">Ver Chat Completo ▼</button>
-                <div id="detail-history" class="hidden mt-3 space-y-2 text-xs text-gray-500 pl-3 border-l-2 border-gray-100"></div>
-            </div>
-            <div class="p-5 border-t border-gray-100 bg-gray-50">
-                <button id="call-btn" onclick="callProspect()" class="w-full bg-green-600 text-white py-3.5 rounded-xl font-bold shadow-lg active:scale-95 transition-transform opacity-50 cursor-not-allowed">📞 Número No Disponible</button>
-            </div>
+      <div class="flex-grow overflow-y-auto p-4">
+        <table class="w-full text-left border-collapse bg-white rounded-2xl shadow-sm overflow-hidden">
+          <thead class="bg-gray-50 border-b border-gray-100">
+            <tr class="text-gray-400 text-[10px] uppercase font-bold tracking-wider">
+              <th class="p-4 w-40">Fecha</th>
+              <th class="p-4">Prospecto</th>
+              <th class="p-4">Cita</th>
+              <th class="p-4 text-right">Acción</th>
+            </tr>
+          </thead>
+          <tbody id="leads-table-body" class="divide-y divide-gray-50"></tbody>
+        </table>
+        <div id="empty-state" class="hidden text-center py-20">
+          <p class="text-gray-400 text-sm">No hay citas todavía.</p>
         </div>
+      </div>
     </div>
 
-    <!-- ✅ JS separado (mismo nivel) -->
-    <script type="module" src="./app.js"></script>
+    <!-- TAB: TRAINING -->
+    <div id="section-training" class="flex-grow p-6 bg-gray-50 overflow-y-auto hidden">
+      <div class="max-w-3xl mx-auto bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+        <h2 class="text-lg font-bold text-gray-900 mb-4">Cerebro de Lucía</h2>
+        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+          <p class="text-sm text-yellow-700">
+            ⚠️ <b>Sistema Manual:</b><br>
+            Usa: <code>[BOTONES: Opción 1, Opción 2]</code> al final de tus preguntas.<br>
+            Para pedir cita, Lucía debe terminar su mensaje con: <code>[AGENDAR_CITA]</code>
+          </p>
+        </div>
+
+        <textarea id="prompt-editor" class="w-full h-80 p-4 border border-gray-200 rounded-xl font-sans text-sm leading-relaxed focus:border-blue-500 outline-none resize-none"></textarea>
+
+        <div class="mt-4 flex justify-end">
+          <button onclick="savePrompt()" class="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">
+            Guardar Configuración
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL DETALLE LEAD -->
+  <div id="lead-detail-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden">
+      <div class="bg-slate-50 p-5 border-b border-gray-100 flex justify-between items-center">
+        <h3 class="text-lg font-bold text-gray-900">Ficha del Prospecto</h3>
+        <button onclick="closeDetailModal()" class="bg-white p-2 rounded-full shadow-sm text-gray-400 hover:text-gray-600">✕</button>
+      </div>
+
+      <div class="p-6 overflow-y-auto bg-white flex-grow">
+        <div id="detail-summary" class="text-sm text-slate-700 bg-blue-50 p-5 rounded-2xl border border-blue-100 leading-relaxed font-medium whitespace-pre-line">
+          Esperando análisis...
+        </div>
+
+        <div id="contact-info" class="mt-4 hidden">
+          <p class="text-xs font-bold text-gray-400 uppercase">Teléfono Detectado</p>
+          <p class="text-lg font-bold text-gray-800" id="detail-phone">--</p>
+        </div>
+
+        <button onclick="toggleHistory()" class="mt-6 text-xs font-bold text-gray-400 uppercase tracking-wider w-full text-left hover:text-blue-500">
+          Ver Chat Completo ▼
+        </button>
+        <div id="detail-history" class="hidden mt-3 space-y-2 text-xs text-gray-500 pl-3 border-l-2 border-gray-100"></div>
+      </div>
+
+      <div class="p-5 border-t border-gray-100 bg-gray-50">
+        <button id="call-btn" onclick="callProspect()" class="w-full bg-green-600 text-white py-3.5 rounded-xl font-bold shadow-lg active:scale-95 transition-transform opacity-50 cursor-not-allowed">
+          📞 Número No Disponible
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
 </body>
 </html>
