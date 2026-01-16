@@ -297,8 +297,11 @@
         const JORGE_PHONE = "14079553077";
         const isInCanvas = typeof __firebase_config !== 'undefined';
         const MODEL_NAME = isInCanvas ? "gemini-2.5-flash-preview-09-2025" : "gemini-1.5-flash";
-        const sessionId = localStorage.getItem('sl_session_id') || crypto.randomUUID();
-        if(!localStorage.getItem('sl_session_id')) localStorage.setItem('sl_session_id', sessionId);
+        
+        // NO MEMORIA: Siempre nueva sesión
+        const sessionId = crypto.randomUUID(); 
+        // Limpiamos cualquier rastro anterior
+        localStorage.removeItem('sl_session_id');
 
         const myFirebaseConfig = {
             apiKey: "AIzaSyA_-x6UEEVEJ7uAY8ohCrDussZ938QQ0B0",
@@ -314,7 +317,7 @@
         let db, app, auth, appId; let useLocalStorage = false;
         let allLeadsCache = [];
 
-        // NUEVO CEREBRO DE LUCÍA (TU GUION ORIGINAL + REGLAS ESTRICTAS)
+        // NUEVO CEREBRO DE LUCÍA (CON CONTROL ESTRICTO DE BOTONES Y GUION ORIGINAL RESTAURADO)
         const DEFAULT_PROMPT = `
 1. IDENTIDAD Y FILTRO DE INICIO
 Nombre: Lucía.
@@ -380,6 +383,7 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     currentUser = user;
+                    // Se llama a loadSettings SIEMPRE que hay usuario para evitar el bug de refresco
                     loadSettings();
                     
                     if (user.isAnonymous) {
@@ -432,6 +436,13 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
             if(v === 'admin') { 
                 document.getElementById('admin-view').classList.add('flex'); 
                 loadLeads(); 
+            } else if (v === 'client') {
+                // Forzar verde siempre al volver al cliente
+                const dot = document.getElementById('db-status-dot');
+                if(dot) {
+                    dot.classList.remove('bg-red-500');
+                    dot.classList.add('bg-green-500');
+                }
             }
         };
         
@@ -699,4 +710,3 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
     </script>
 </body>
 </html>
-```
