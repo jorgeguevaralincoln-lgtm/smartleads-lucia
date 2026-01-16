@@ -10,7 +10,7 @@
         /* --- ESTILOS PREMIUM --- */
         body { font-family: 'Inter', sans-serif; background-color: #f2f2f7; color: #1d1d1f; -webkit-tap-highlight-color: transparent; }
         
-        /* CHAT CONTAINER: Flex column para alineación correcta (WhatsApp style) */
+        /* CHAT CONTAINER: Flex column para alineación correcta */
         .chat-container { 
             height: 100%; 
             overflow-y: auto; 
@@ -96,16 +96,14 @@
         .crm-modal.active { opacity: 1; pointer-events: auto; }
         .crm-card { background: white; width: 95%; max-width: 550px; max-height: 85vh; border-radius: 30px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,0.3); }
         
-        /* Badges de Estado */
         .badge-fl { background-color: #FEF3C7; color: #D97706; border: 1px solid #FCD34D; }
         .badge-tx { background-color: #DBEAFE; color: #1D4ED8; border: 1px solid #93C5FD; }
 
-        /* Notificación Toast Centrada */
         .toast-notification {
             position: fixed; 
             top: 20px; 
-            left: 50%; /* Centrado horizontal */
-            transform: translateX(-50%) translateY(-100px); /* Oculto arriba */
+            left: 50%; 
+            transform: translateX(-50%) translateY(-100px); 
             background: #34C759; color: white;
             padding: 12px 24px; border-radius: 16px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.15);
@@ -115,7 +113,6 @@
             display: flex; align-items: center; gap: 8px;
             backdrop-filter: blur(10px);
         }
-        /* Clase para mostrar */
         .toast-notification.show { 
             transform: translateX(-50%) translateY(0); 
             opacity: 1; 
@@ -124,7 +121,6 @@
 </head>
 <body class="flex items-center justify-center min-h-screen bg-gray-100">
 
-    <!-- Notificación Toast -->
     <div id="toast" class="toast-notification">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
@@ -147,11 +143,12 @@
         </div>
 
         <div id="chat-box" class="chat-container p-5 flex-grow no-scrollbar bg-[#f5f5f7]">
+            <!-- MENSAJE DE BIENVENIDA ESTÁTICO (EL CÓDIGO) -->
             <div class="bubble lucia shadow-sm">
                 Hola, soy <b>Lucía</b>, su Asistente de beneficios. Mi labor es ayudarle a tomar decisiones acertadas para su familia. Toda su información es privada y nada se compartirá sin su permiso.<br><br>
                 <b>¿Desea continuar para conocer sus beneficios?</b>
             </div>
-            <!-- Botones iniciales fuera de la burbuja (se alinearán a la izquierda por el flex) -->
+            <!-- BOTONES INICIALES ESTÁTICOS (EL CÓDIGO) -->
             <div class="quick-actions-container">
                 <button class="quick-btn" onclick="sendMessage('Sí, continuar')">Sí, continuar</button>
                 <button class="quick-btn" onclick="sendMessage('No me interesa')">No me interesa</button>
@@ -298,9 +295,8 @@
         const isInCanvas = typeof __firebase_config !== 'undefined';
         const MODEL_NAME = isInCanvas ? "gemini-2.5-flash-preview-09-2025" : "gemini-1.5-flash";
         
-        // NO MEMORIA: Siempre nueva sesión
+        // SIN MEMORIA: Siempre nueva sesión
         const sessionId = crypto.randomUUID(); 
-        // Limpiamos cualquier rastro anterior
         localStorage.removeItem('sl_session_id');
 
         const myFirebaseConfig = {
@@ -317,7 +313,7 @@
         let db, app, auth, appId; let useLocalStorage = false;
         let allLeadsCache = [];
 
-        // NUEVO CEREBRO DE LUCÍA (TU GUION RESTAURADO LETRA POR LETRA + REGLAS ESTRICTAS)
+        // --- CEREBRO DURO ESTABILIZADO (TU VERSIÓN CORRECTA) ---
         const DEFAULT_PROMPT = `
 1. IDENTIDAD Y FILTRO DE INICIO
 Nombre: Lucía.
@@ -367,7 +363,6 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
 
         function setupLocalMode() {
             useLocalStorage = true; currentUser = { uid: 'local' };
-            // Lógica eliminada: El punto ya no se pone rojo.
             saveLocalLead({ startedAt: new Date().toISOString(), lastMessage: 'Modo Local', status: 'Navegando', summary: 'Pendiente...' });
             loadSettings();
         }
@@ -384,9 +379,7 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     currentUser = user;
-                    // Se llama a loadSettings SIEMPRE que hay usuario para evitar el bug de refresco
                     loadSettings();
-                    
                     if (user.isAnonymous) {
                         try { setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leads', sessionId), { startedAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: 'Sesión iniciada', status: 'Navegando', summary: 'Pendiente...' }, { merge: true }).catch(e => setupLocalMode()); } catch(e){setupLocalMode();}
                     }
@@ -410,18 +403,16 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
         window.logoutAdmin = async () => { await signOut(auth); await signInAnonymously(auth); switchView('client'); };
 
         async function loadSettings() {
-            // CLAVE DE MEMORIA ACTUALIZADA para forzar la carga del nuevo prompt
-            const STORAGE_KEY = 'lucia_brain_new'; 
+            // CLAVE ESTABLE - Asegura que leemos lo guardado y no versiones fantasma
+            const STORAGE_PATH = 'settings/config'; 
             
             if (useLocalStorage) { 
-                currentSystemPrompt = localStorage.getItem(STORAGE_KEY) || DEFAULT_PROMPT; 
+                currentSystemPrompt = localStorage.getItem('lucia_config_prod') || DEFAULT_PROMPT; 
             } else { 
                 try { 
                     const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config')); 
                     if (snap.exists()) {
-                        // Aquí podríamos leer de la BD, pero para asegurar que veas TU versión:
-                        // Si la BD tiene algo muy viejo, preferimos el DEFAULT_PROMPT por ahora.
-                        // O bien, asumimos que si acabas de guardar, la BD tiene lo correcto.
+                        // Si existe config guardada, úsala. Si no, usa el DEFAULT correcto.
                         currentSystemPrompt = snap.data().prompt || DEFAULT_PROMPT;
                     } else {
                         currentSystemPrompt = DEFAULT_PROMPT;
@@ -436,10 +427,9 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
         window.savePrompt = async () => {
             const val = document.getElementById('prompt-editor').value; 
             currentSystemPrompt = val;
-            const STORAGE_KEY = 'lucia_brain_new';
-
+            
             if (useLocalStorage) {
-                localStorage.setItem(STORAGE_KEY, val);
+                localStorage.setItem('lucia_config_prod', val);
                 window.showToast("Prompt guardado correctamente");
             }
             else { 
@@ -459,7 +449,6 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
                 document.getElementById('admin-view').classList.add('flex'); 
                 loadLeads(); 
             } else if (v === 'client') {
-                // Forzar verde siempre al volver al cliente
                 const dot = document.getElementById('db-status-dot');
                 if(dot) {
                     dot.classList.remove('bg-red-500');
@@ -510,7 +499,6 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
             const emptyState = document.getElementById('empty-state');
             tbody.innerHTML = '';
             
-            // Filter only hot leads or leads with significant conversation content
             const filtered = allLeadsCache.filter(l => {
                 return l.status === '🔥 CALIENTE' || (l.summary && l.summary.length > 20);
             });
@@ -554,7 +542,6 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
             }, 3000);
         };
         
-        // Función específica para el botón de refrescar
         window.manualRefresh = function() {
             loadLeads();
             window.showToast("Datos Actualizados");
@@ -572,7 +559,6 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
                         snap.forEach(d => data.push({id:d.id, ...d.data()}));
                         allLeadsCache = data.sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0));
                         renderLeadsTable();
-                        // Eliminado showToast de aquí para evitar que salga al iniciar
                     }, (err) => { console.warn("Error cargando leads:", err); });
                 } catch(e) { console.warn("Error snapshot"); }
             }
@@ -621,13 +607,11 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
             }
         }
 
-        // --- BOTONES MANUALES ---
         function detectContextAndShowButtons(text) {
             const regex = /\[BOTONES:\s*(.*?)\]/i;
             const match = text.match(regex);
             
             if (match) {
-                // CLEANUP: Eliminamos asteriscos y otros caracteres markdown del texto de los botones
                 const options = match[1].split(',').map(s => s.replace(/[\*\_\[\]]/g, '').trim());
                 const container = document.createElement('div');
                 container.className = "quick-actions-container";
@@ -657,7 +641,6 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
                 const regex = /\[BOTONES:\s*(.*?)\]/i;
                 const match = cleanText.match(regex);
                 if (match) {
-                    // CLEANUP: Eliminamos asteriscos y caracteres extraños de los botones
                     buttons = match[1].split(',').map(s => s.replace(/[\*\_\[\]]/g, '').trim());
                     cleanText = cleanText.replace(regex, "").trim();
                 }
@@ -667,7 +650,6 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
             div.innerHTML = cleanText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
             document.getElementById('chat-box').appendChild(div);
             
-            // Render buttons AFTER bubble
             if (buttons) {
                 const container = document.createElement('div');
                 container.className = "quick-actions-container";
@@ -722,7 +704,6 @@ Prohibiciones: No menciones nombres de compañías, números de póliza, ni el n
         function saveLocalLead(data) { const l = JSON.parse(localStorage.getItem('sl_leads_data')||'{}'); l[sessionId] = {...l[sessionId], ...data, id:sessionId, updatedAt:new Date().toISOString()}; localStorage.setItem('sl_leads_data', JSON.stringify(l)); }
         function getLocalLeads() { return Object.values(JSON.parse(localStorage.getItem('sl_leads_data')||'{}')).sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt)); }
         
-        // --- CALL PROSPECT ---
         window.callProspect = () => {
             const phone = document.getElementById('detail-phone').innerText;
             if (phone && phone !== '--') {
