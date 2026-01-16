@@ -24,7 +24,7 @@ const ADMIN_EMAIL = "asistentedebeneficios@gmail.com";
 
 // ✅ Modelo vigente
 const GEMINI_MODEL = "gemini-2.5-flash-lite";
-// const GEMINI_MODEL = "gemini-2.5-flash"; // si quieres más potencia
+// const GEMINI_MODEL = "gemini-2.5-flash";
 
 // Apps Script Booking
 const BOOKING_ENDPOINT =
@@ -33,7 +33,7 @@ const BOOKING_TOKEN = "sl_2026_seguro_89xK2P";
 
 const MEETING_MINUTES = 20;
 
-// TZ detectada del prospecto
+// TZ del prospecto (browser)
 const PROSPECT_TZ =
   Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York";
 
@@ -88,6 +88,10 @@ REGLA DE AGENDA:
 - Solo cuando el prospecto quiera una cita o el siguiente paso, pregunte EXACTAMENTE:
 "Perfecto. ¿Qué día y a qué hora le conviene para una llamada corta?"
 - Al final del mensaje agregue: [AGENDAR_CITA]
+
+REGLAS:
+- No confirme citas sin confirmación del sistema.
+- No invente disponibilidad.
 `;
 
 /** =========================
@@ -148,7 +152,7 @@ function appendButtonsIfAny(text) {
 }
 
 function appendMessageBubble(role, text, shouldSave = true) {
-  // Detectar activación de agenda por etiqueta del modelo
+  // detect booking marker
   const wantsBooking = (text || "").includes("[AGENDAR_CITA]");
   let cleanText = (text || "").replace("[AGENDAR_CITA]", "").trim();
 
@@ -196,8 +200,8 @@ function appendMessageBubble(role, text, shouldSave = true) {
 }
 
 /** =========================
- *  KEY FIX: Detect date/time even without [AGENDAR_CITA]
- *  (adult users write "mañana 3pm" and expect booking)
+ *  KEY FIX #1:
+ *  Detect date/time even if Lucía didn't repeat [AGENDAR_CITA]
  *  ========================= */
 function looksLikeDateTime(text) {
   const t = (text || "").toLowerCase();
@@ -214,7 +218,7 @@ auth = getAuth(app);
 db = getFirestore(app);
 
 /** =========================
- *  AUTH + Create lead base
+ *  AUTH
  *  ========================= */
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
@@ -224,7 +228,7 @@ onAuthStateChanged(auth, async (user) => {
 
   currentUser = user;
 
-  // Crear lead base para que reglas permitan update por userId
+  // Create lead base (includes userId for rules)
   try {
     await setDoc(
       doc(db, "artifacts", appId, "public", "data", "leads", sessionId),
@@ -246,7 +250,7 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 /** =========================
- *  ADMIN: login modal
+ *  ADMIN LOGIN MODAL
  *  ========================= */
 window.openLoginModal = () => {
   const modal = $("login-modal");
@@ -393,7 +397,7 @@ function renderLeadsTable() {
 
   tbody.innerHTML = "";
 
-  // Mostrar solo quienes ya solicitaron/confirmaron cita
+  // Mostrar solo quienes solicitaron/confirmaron cita
   const filtered = allLeadsCache.filter(
     (l) => l.status === "CITA_SOLICITADA" || l.status === "CITA_CONFIRMADA"
   );
@@ -476,9 +480,7 @@ window.openDetailModal = async (id) => {
           `<div class="mb-2">
              <span class="font-bold ${
                m.role === "lucia" ? "text-blue-600" : "text-gray-800"
-             }">${m.role === "lucia" ? "Lucía" : "Cliente"}:</span> ${escapeHtml(
-            m.text
-          )}
+             }">${m.role === "lucia" ? "Lucía" : "Cliente"}:</span> ${escapeHtml(m.text)}
            </div>`
       )
       .join("");
@@ -544,7 +546,7 @@ async function saveMessage(txt, role, extra = {}) {
 /** =========================
  *  Gemini call
  *  ========================= */
-async function callGemini(userText) {
+async function callGemini() {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
     GEMINI_MODEL
   )}:generateContent?key=${API_KEY}`;
@@ -571,7 +573,7 @@ async function callGemini(userText) {
 }
 
 /** =========================
- *  Lead summary extractor (for your dashboard + calendar description)
+ *  Lead summary extractor (for dashboard + calendar description)
  *  ========================= */
 async function analyzeLead() {
   const prompt = `
@@ -636,6 +638,7 @@ ANALIZA el chat y devuelve JSON estricto:
 
 /** =========================
  *  Booking: call Apps Script
+ *  KEY FIX #2: avoid CORS preflight using text/plain
  *  ========================= */
 async function bookWithAppsScript({
   name,
@@ -658,11 +661,23 @@ async function bookWithAppsScript({
 
   const r = await fetch(BOOKING_ENDPOINT, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8", // ✅ avoids OPTIONS preflight in most browsers
+    },
     body: JSON.stringify(payload),
   });
 
-  return await r.json();
+  const text = await r.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    console.error("Respuesta no-JSON del script:", text);
+    return {
+      ok: false,
+      status: "BAD_RESPONSE",
+      message: "Respuesta inválida del servidor",
+    };
+  }
 }
 
 /** =========================
@@ -673,34 +688,31 @@ async function sendMessage(manualText = null) {
   const text = manualText || (input?.value || "").trim();
   if (!text) return;
 
-  // append user
+  // user bubble
   appendMessageBubble("user", text, true);
   if (input) input.value = "";
 
-  // push history for gemini context
+  // push into history
   chatHistory.push({ role: "user", parts: [{ text }] });
 
-  /**
-   * ✅ KEY FIX:
-   * If user writes a datetime ("mañana 3pm"), go booking flow even if awaitingAppointment is false.
-   */
+  // Booking if: awaitingAppointment OR user text looks like datetime
   const shouldTryBooking = awaitingAppointment || looksLikeDateTime(text);
 
   if (shouldTryBooking) {
-    // enter booking mode
     awaitingAppointment = true;
-
     setLoading(true);
 
     try {
-      // If user selects 1 or 2 from suggestions
+      // If user chooses suggestion 1/2
       const trimmed = text.trim();
       if (pendingSuggestions.length > 0 && (trimmed === "1" || trimmed === "2")) {
         const chosenIso = pendingSuggestions[Number(trimmed) - 1];
         pendingSuggestions = [];
 
-        // Mark lead as requested
-        await saveMessage("CITA_SOLICITADA", "lucia", { status: "CITA_SOLICITADA" });
+        await updateDoc(
+          doc(db, "artifacts", appId, "public", "data", "leads", sessionId),
+          { status: "CITA_SOLICITADA", updatedAt: serverTimestamp() }
+        );
 
         const lead = await analyzeLead();
         const name = lead.extractedName || "Prospecto";
@@ -749,8 +761,7 @@ async function sendMessage(manualText = null) {
         return;
       }
 
-      // Normal booking attempt with text (e.g., "mañana 3pm")
-      // Mark lead as requested
+      // Normal booking attempt
       await updateDoc(
         doc(db, "artifacts", appId, "public", "data", "leads", sessionId),
         { status: "CITA_SOLICITADA", updatedAt: serverTimestamp() }
@@ -841,7 +852,7 @@ async function sendMessage(manualText = null) {
   // Normal mode: Gemini
   setLoading(true);
   try {
-    const reply = await callGemini(text);
+    const reply = await callGemini();
     setLoading(false);
 
     appendMessageBubble("lucia", reply, true);
@@ -868,7 +879,7 @@ $("chat-form")?.addEventListener("submit", (e) => {
 });
 
 /** =========================
- *  Optional: click outside modal
+ *  Optional: close modal click
  *  ========================= */
 document.addEventListener("click", (e) => {
   const modal = $("login-modal");
